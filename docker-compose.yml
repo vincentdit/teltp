@@ -1,0 +1,52 @@
+# TeLTP full stack: MySQL + Spring Boot backend + Angular/nginx frontend.
+# Run from the folder that contains this file plus the teltp-backend and teltp-frontend folders:
+#   docker compose up --build
+# Then open the frontend at http://localhost:8081
+
+services:
+  db:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+    volumes:
+      - teltp-db-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-u", "root", "-p${DB_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+
+  backend:
+    build: ./teltp-backend
+    environment:
+      DB_HOST: db
+      DB_PORT: "3306"
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      SERVER_PORT: "8080"
+    depends_on:
+      db:
+        condition: service_healthy
+    # No host port published for the backend: the frontend reaches it over the
+    # internal Docker network (backend:8080). To hit Swagger/curl from your host,
+    # uncomment the mapping below (pick any free host port).
+    # ports:
+    #   - "8090:8080"
+    restart: unless-stopped
+
+  frontend:
+    build: ./teltp-frontend
+    depends_on:
+      - backend
+    ports:
+      - "9090:80"          # the app you open in the browser
+    restart: unless-stopped
+
+volumes:
+  teltp-db-data:

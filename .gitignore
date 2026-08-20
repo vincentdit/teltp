@@ -1,0 +1,33 @@
+# ---- Java / Maven (backend) ----
+target/
+*.class
+*.jar
+*.war
+!teltp-backend/.mvn/wrapper/maven-wrapper.jar
+.mvn/timing.properties
+
+# ---- Node / Angular (frontend) ----
+node_modules/
+dist/
+.angular/
+npm-debug.log*
+yarn-error.log*
+
+# ---- Docker ----
+# (compose file and Dockerfiles ARE tracked; nothing to ignore by default)
+
+# ---- Secrets / local env ----
+# .env holds local dev creds; keep it out of version control.
+.env
+*.env.local
+
+# ---- IDE / editor ----
+.idea/
+*.iml
+.vscode/
+*.swp
+
+# ---- OS ----
+.DS_Store
+Thumbs.db
+desktop.ini

@@ -1,0 +1,73 @@
+spring:
+  application:
+    name: teltp-backend
+  datasource:
+    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:teltp}?useSSL=false&serverTimezone=Africa/Dar_es_Salaam&allowPublicKeyRetrieval=true
+    username: ${DB_USER:teltp}
+    password: ${DB_PASSWORD:teltp}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: false
+        jdbc:
+          time_zone: Africa/Dar_es_Salaam
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+  mail:
+    host: ${MAIL_HOST:localhost}
+    port: ${MAIL_PORT:1025}
+    username: ${MAIL_USER:}
+    password: ${MAIL_PASSWORD:}
+
+server:
+  port: ${SERVER_PORT:8080}
+  servlet:
+    context-path: /api
+
+teltp:
+  security:
+    jwt:
+      secret: ${JWT_SECRET:change-me-in-production-this-must-be-at-least-512-bits-long-for-hs512-signing-keys-okay}
+      access-token-validity-seconds: 3600
+      refresh-token-validity-seconds: 2592000
+    mfa:
+      enabled: false            # MFA seam present; TOTP/OTP not built in v1
+  integration:
+    gepg:
+      enabled: false            # stub; flip on when SP code + certs provisioned
+      sp-code: ${GEPG_SP_CODE:}
+      callback-path: /billing/gepg/callback
+    mobile-money:
+      enabled: false
+    bank-transfer:
+      enabled: false
+    nida:
+      enabled: false            # National ID verification seam
+    notification:
+      email:
+        enabled: false
+        from: noreply@tirdo.go.tz
+      sms:
+        enabled: false
+        sender-id: TIRDO
+    meeting:
+      default-provider: MANUAL  # MANUAL | ZOOM | TEAMS | JITSI
+  content:
+    storage:
+      backend: FILESYSTEM       # FILESYSTEM | S3 (seam)
+      base-path: ${CONTENT_PATH:/var/teltp/content}
+  certificate:
+    verification-base-url: ${CERT_VERIFY_URL:https://teltp.tirdo.go.tz/verify}
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+
+logging:
+  level:
+    tz.go.tirdo.teltp: INFO

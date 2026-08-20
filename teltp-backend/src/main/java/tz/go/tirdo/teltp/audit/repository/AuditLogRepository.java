@@ -1,0 +1,11 @@
+package tz.go.tirdo.teltp.audit.repository;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.JpaRepository;
+import tz.go.tirdo.teltp.audit.entity.AuditLog;
+
+public interface AuditLogRepository extends JpaRepository<AuditLog, Long> {
+    Page<AuditLog> findByActorOrderByOccurredAtDesc(String actor, Pageable pageable);
+    Page<AuditLog> findByActionOrderByOccurredAtDesc(String action, Pageable pageable);
+}

@@ -1,0 +1,41 @@
+<mat-toolbar class="teltp-toolbar">
+  <a routerLink="/catalog" class="brand">
+    <span class="brand-mark">TeLTP</span>
+    <span class="brand-sub">TIRDO Training Hub</span>
+  </a>
+
+  <nav class="top-nav">
+    @for (item of nav(); track item.link) {
+      <a mat-button [routerLink]="item.link" routerLinkActive="active"
+         [routerLinkActiveOptions]="{ exact: item.link === '/catalog' }">{{ item.label }}</a>
+    }
+  </nav>
+
+  <span class="spacer"></span>
+
+  @if (isAuthenticated()) {
+    <button mat-button [matMenuTriggerFor]="userMenu">
+      <mat-icon>account_circle</mat-icon>
+      <span class="username">{{ username() }}</span>
+    </button>
+    <mat-menu #userMenu="matMenu">
+      <a mat-menu-item routerLink="/dashboard">
+        <mat-icon>school</mat-icon><span>My Learning</span>
+      </a>
+      <button mat-menu-item (click)="logout()">
+        <mat-icon>logout</mat-icon><span>Sign out</span>
+      </button>
+    </mat-menu>
+  } @else {
+    <a mat-button routerLink="/login">Sign in</a>
+    <a mat-flat-button routerLink="/register">Create account</a>
+  }
+</mat-toolbar>
+
+<main>
+  <router-outlet />
+</main>
+
+<footer class="teltp-footer">
+  <span class="muted">Tanzania Industrial Research and Development Organization &middot; National Industrial Skills and Innovation Training Hub</span>
+</footer>

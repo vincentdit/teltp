@@ -1,0 +1,108 @@
+@use '@angular/material' as mat;
+
+// ---- Angular Material M3 theme ----------------------------------------------
+// Sober institutional palette: green primary (TIRDO), cyan tertiary.
+// Typography pairs Spectral (display/brand) with Public Sans (body/plain).
+html {
+  color-scheme: light;
+  @include mat.theme((
+    color: (
+      theme-type: light,
+      primary: mat.$green-palette,
+      tertiary: mat.$cyan-palette,
+    ),
+    typography: (
+      plain-family: 'Public Sans, system-ui, sans-serif',
+      brand-family: 'Spectral, Georgia, serif',
+      bold-weight: 700,
+      medium-weight: 500,
+      regular-weight: 400,
+    ),
+    density: 0,
+  ));
+}
+
+// ---- Design tokens ----------------------------------------------------------
+:root {
+  --teltp-bg: #f6f5f1;          // warm neutral surface
+  --teltp-surface: #ffffff;
+  --teltp-ink: #1c1f1a;
+  --teltp-muted: #5b6159;
+  --teltp-line: #e3e1d8;
+  --teltp-brand: #2e6b41;        // deep green
+  --teltp-brand-dark: #1f4d2d;
+  --teltp-accent: #b9892f;       // muted gold accent
+  --teltp-radius: 12px;
+  --teltp-gap: 16px;
+  --teltp-maxw: 1180px;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--teltp-bg);
+  color: var(--teltp-ink);
+  font-family: 'Public Sans', system-ui, sans-serif;
+}
+
+h1, h2, h3, .brand-font {
+  font-family: 'Spectral', Georgia, serif;
+  letter-spacing: -0.01em;
+}
+
+a { color: var(--teltp-brand); }
+
+.page {
+  max-width: var(--teltp-maxw);
+  margin: 0 auto;
+  padding: 28px 20px 64px;
+}
+
+.page-title {
+  margin: 0 0 4px;
+  font-size: 1.9rem;
+  font-weight: 700;
+}
+
+.page-subtitle {
+  margin: 0 0 24px;
+  color: var(--teltp-muted);
+}
+
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--teltp-gap);
+}
+
+.surface-card {
+  background: var(--teltp-surface);
+  border: 1px solid var(--teltp-line);
+  border-radius: var(--teltp-radius);
+  padding: 20px;
+}
+
+.muted { color: var(--teltp-muted); }
+.spacer { flex: 1 1 auto; }
+.row { display: flex; align-items: center; gap: 12px; }
+.stack { display: flex; flex-direction: column; gap: 12px; }
+.full-width { width: 100%; }
+
+.chip {
+  display: inline-block;
+  font-size: 0.74rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: rgba(46, 107, 65, 0.10);
+  color: var(--teltp-brand-dark);
+}
+
+.chip.accent { background: rgba(185, 137, 47, 0.14); color: #6d4f17; }

@@ -1,0 +1,42 @@
+.teltp-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--teltp-brand-dark);
+  color: #fff;
+  gap: 8px;
+  padding: 0 20px;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.2);
+}
+
+.brand {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.05;
+  text-decoration: none;
+  color: #fff;
+  margin-right: 20px;
+}
+.brand-mark { font-family: 'Spectral', serif; font-weight: 700; font-size: 1.3rem; }
+.brand-sub  { font-size: 0.66rem; letter-spacing: 0.10em; text-transform: uppercase; opacity: 0.75; }
+
+.top-nav { display: flex; gap: 2px; }
+.top-nav a.active { background: rgba(255, 255, 255, 0.14); border-radius: 8px; }
+
+.username { margin-left: 6px; }
+
+main { min-height: calc(100vh - 64px - 56px); }
+
+.teltp-footer {
+  border-top: 1px solid var(--teltp-line);
+  background: var(--teltp-surface);
+  padding: 18px 20px;
+  text-align: center;
+  font-size: 0.82rem;
+}
+.teltp-footer .muted { color: var(--teltp-muted); }
+
+@media (max-width: 720px) {
+  .brand-sub { display: none; }
+  .top-nav { display: none; }
+}
