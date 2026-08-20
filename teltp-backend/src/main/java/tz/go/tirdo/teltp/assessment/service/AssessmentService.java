@@ -77,6 +77,11 @@ public class AssessmentService {
 
     // ---- taking ----
 
+    @Transactional(readOnly = true)
+    public java.util.List<AssessmentResponse> listForCourse(String courseUuid) {
+        return assessments.findByCourseUuid(courseUuid).stream().map(this::toResponse).toList();
+    }
+
     /** Student-facing rendering with correct flags stripped. */
     @Transactional(readOnly = true)
     public AssessmentView view(String assessmentUuid) {

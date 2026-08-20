@@ -9,6 +9,8 @@ import tz.go.tirdo.teltp.auth.service.UserService;
 import tz.go.tirdo.teltp.common.ApiResponse;
 import tz.go.tirdo.teltp.security.CurrentUser;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/assessments")
 public class AssessmentController {
@@ -31,6 +33,12 @@ public class AssessmentController {
     @PreAuthorize("hasAnyRole('ADMIN','INSTRUCTOR')")
     public ApiResponse<QuestionView> addQuestion(@Valid @RequestBody AddQuestionRequest req) {
         return ApiResponse.ok(service.addQuestion(req));
+    }
+
+    @GetMapping("/courses/{courseUuid}")
+    @PreAuthorize("isAuthenticated()")
+    public ApiResponse<List<AssessmentResponse>> forCourse(@PathVariable String courseUuid) {
+        return ApiResponse.ok(service.listForCourse(courseUuid));
     }
 
     @GetMapping("/{uuid}/view")
