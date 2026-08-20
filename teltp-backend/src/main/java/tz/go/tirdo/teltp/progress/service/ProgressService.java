@@ -1,9 +1,11 @@
 package tz.go.tirdo.teltp.progress.service;
 
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tz.go.tirdo.teltp.assessment.service.AssessmentService;
 import tz.go.tirdo.teltp.catalog.repository.LessonRepository;
+import tz.go.tirdo.teltp.common.event.CourseCompletionCandidateEvent;
 import tz.go.tirdo.teltp.progress.dto.ProgressDtos.*;
 import tz.go.tirdo.teltp.progress.entity.LessonProgress;
 import tz.go.tirdo.teltp.progress.repository.LessonProgressRepository;
@@ -22,12 +24,14 @@ public class ProgressService {
     private final LessonProgressRepository progress;
     private final LessonRepository lessons;
     private final AssessmentService assessments;
+    private final ApplicationEventPublisher events;
 
     public ProgressService(LessonProgressRepository progress, LessonRepository lessons,
-                           AssessmentService assessments) {
+                           AssessmentService assessments, ApplicationEventPublisher events) {
         this.progress = progress;
         this.lessons = lessons;
         this.assessments = assessments;
+        this.events = events;
     }
 
     @Transactional
@@ -44,7 +48,13 @@ public class ProgressService {
             lp.setPercentComplete(100);
         }
         progress.save(lp);
-        return computeForCourse(studentUuid, req.courseUuid());
+        CourseProgressResponse result = computeForCourse(studentUuid, req.courseUuid());
+        // Finishing the last mandatory lesson can complete the course; let certification react.
+        if (result.courseCompleted()) {
+            events.publishEvent(new CourseCompletionCandidateEvent(
+                    studentUuid, req.courseUuid(), req.lessonUuid()));
+        }
+        return result;
     }
 
     @Transactional(readOnly = true)

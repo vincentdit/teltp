@@ -54,6 +54,12 @@ export const routes: Routes = [
       import('./features/certificates/my-certificates.component').then((m) => m.MyCertificatesComponent),
   },
   {
+    path: 'results',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./features/results/my-results.component').then((m) => m.MyResultsComponent),
+  },
+  {
     path: 'assessments/:uuid/take',
     canActivate: [authGuard],
     loadComponent: () =>
@@ -89,6 +95,20 @@ export const routes: Routes = [
     data: { roles: ['ADMIN', 'INSTRUCTOR'] },
     loadComponent: () =>
       import('./features/admin/issue-certificate/issue-certificate.component').then((m) => m.IssueCertificateComponent),
+  },
+  {
+    path: 'admin/grading',
+    canActivate: [roleGuard],
+    data: { roles: ['ADMIN', 'INSTRUCTOR'] },
+    loadComponent: () =>
+      import('./features/admin/grading/grade-list.component').then((m) => m.GradeListComponent),
+  },
+  {
+    path: 'admin/grading/:uuid',
+    canActivate: [roleGuard],
+    data: { roles: ['ADMIN', 'INSTRUCTOR'] },
+    loadComponent: () =>
+      import('./features/admin/grading/grade-attempt.component').then((m) => m.GradeAttemptComponent),
   },
 
   { path: '**', redirectTo: 'catalog' },

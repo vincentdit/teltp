@@ -43,7 +43,7 @@ interface AdminTile { label: string; icon: string; link?: string; ready: boolean
 export class AdminHomeComponent {
   readonly tiles: AdminTile[] = [
     { label: 'Courses', icon: 'menu_book', link: '/admin/courses', ready: true },
-    { label: 'Assessments', icon: 'quiz', ready: false },
+    { label: 'Assessment Grading', icon: 'quiz', link: '/admin/grading', ready: true },
     { label: 'Enrolments & Cohorts', icon: 'groups', ready: false },
     { label: 'Certificates', icon: 'workspace_premium', link: '/admin/certificates', ready: true },
     { label: 'Schedule & Webinars', icon: 'event', ready: false },

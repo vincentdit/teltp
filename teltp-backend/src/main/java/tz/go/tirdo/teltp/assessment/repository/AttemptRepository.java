@@ -10,5 +10,7 @@ import java.util.Optional;
 public interface AttemptRepository extends JpaRepository<Attempt, Long> {
     Optional<Attempt> findByUuid(String uuid);
     List<Attempt> findByStudentUuidAndAssessmentUuid(String studentUuid, String assessmentUuid);
+    List<Attempt> findByStudentUuidAndAssessmentUuidOrderByCreatedAtDesc(String studentUuid, String assessmentUuid);
+    List<Attempt> findByStudentUuidOrderByCreatedAtDesc(String studentUuid);
     List<Attempt> findByStatus(AttemptStatus status);
 }

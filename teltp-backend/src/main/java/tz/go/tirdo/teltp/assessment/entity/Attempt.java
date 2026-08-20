@@ -25,6 +25,9 @@ public class Attempt extends BaseEntity {
     @Column(nullable = false, length = 30)
     private AttemptStatus status = AttemptStatus.IN_PROGRESS;
 
+    /** When a timed attempt must be submitted by; null for untimed assessments. */
+    private Instant expiresAt;
+
     private Instant submittedAt;
 
     private Integer scorePercent;   // null until graded

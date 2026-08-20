@@ -47,6 +47,13 @@ public class AssessmentController {
         return ApiResponse.ok(service.view(uuid));
     }
 
+    /** Whether the current student may (re)take this assessment; drives the Start button. */
+    @GetMapping("/{uuid}/eligibility")
+    @PreAuthorize("hasRole('STUDENT')")
+    public ApiResponse<AttemptEligibility> eligibility(@PathVariable String uuid) {
+        return ApiResponse.ok(service.eligibility(me(), uuid));
+    }
+
     @PostMapping("/{uuid}/start")
     @PreAuthorize("hasRole('STUDENT')")
     public ApiResponse<AttemptResponse> start(@PathVariable String uuid) {
@@ -57,6 +64,32 @@ public class AssessmentController {
     @PreAuthorize("hasRole('STUDENT')")
     public ApiResponse<AttemptResponse> submit(@Valid @RequestBody SubmitAttemptRequest req) {
         return ApiResponse.ok("Submitted", service.submit(me(), req));
+    }
+
+    /** The current student's latest result for an assessment (own answers + feedback only). */
+    @GetMapping("/{uuid}/result")
+    @PreAuthorize("hasRole('STUDENT')")
+    public ApiResponse<MyAttemptResult> myResult(@PathVariable String uuid) {
+        return ApiResponse.ok(service.myLatestResult(me(), uuid));
+    }
+
+    /** The current student's full attempt history across all assessments. */
+    @GetMapping("/attempts/mine")
+    @PreAuthorize("hasRole('STUDENT')")
+    public ApiResponse<List<MyAttemptSummary>> myHistory() {
+        return ApiResponse.ok(service.myHistory(me()));
+    }
+
+    @GetMapping("/attempts/pending")
+    @PreAuthorize("hasAnyRole('ADMIN','INSTRUCTOR')")
+    public ApiResponse<List<AttemptSummary>> pending() {
+        return ApiResponse.ok(service.listAwaitingGrading());
+    }
+
+    @GetMapping("/attempts/{uuid}")
+    @PreAuthorize("hasAnyRole('ADMIN','INSTRUCTOR')")
+    public ApiResponse<AttemptGradingView> attempt(@PathVariable String uuid) {
+        return ApiResponse.ok(service.gradingView(uuid));
     }
 
     @PostMapping("/grade")

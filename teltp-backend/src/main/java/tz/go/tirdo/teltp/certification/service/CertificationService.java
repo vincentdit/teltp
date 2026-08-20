@@ -1,5 +1,6 @@
 package tz.go.tirdo.teltp.certification.service;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tz.go.tirdo.teltp.auth.entity.User;
@@ -17,6 +18,7 @@ import tz.go.tirdo.teltp.progress.service.ProgressService;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -30,6 +32,14 @@ public class CertificationService {
     private final UserService users;
     private final ReferenceNumberGenerator refGen;
 
+    /** When true, passing the certifying exam (which completes the course) auto-issues the certificate. */
+    @Value("${teltp.certificate.auto-issue:true}")
+    private boolean autoIssueEnabled;
+
+    /** Accrediting body stamped on auto-issued certificates; blank leaves it unset. */
+    @Value("${teltp.certificate.default-accrediting-body:}")
+    private String defaultAccreditingBody;
+
     public CertificationService(CertificateRepository certificates, CertificatePdfGenerator pdfGenerator,
                                 ContentStorage storage, ProgressService progress, CourseService courses,
                                 UserService users, ReferenceNumberGenerator refGen) {
@@ -42,34 +52,33 @@ public class CertificationService {
         this.refGen = refGen;
     }
 
-    /** Issue a certificate; gated on verified course completion. */
+    /** Issue a certificate manually; gated on verified course completion and single-issue per course. */
     @Transactional
     public CertificateResponse issue(IssueRequest req) {
         if (!progress.isCourseCompleted(req.studentUuid(), req.courseUuid()))
             throw new BusinessRuleException("Student has not completed the course");
         certificates.findByStudentUuidAndCourseUuid(req.studentUuid(), req.courseUuid())
                 .ifPresent(c -> { throw new BusinessRuleException("Certificate already issued"); });
+        Certificate saved = buildAndStore(req.studentUuid(), req.courseUuid(),
+                req.accreditingBody(), req.accreditationLevel(), req.expiresOn());
+        return toResponse(saved);
+    }
 
-        User student = users.getEntity(req.studentUuid());
-        Course course = courses.getEntity(req.courseUuid());
-
-        Certificate cert = new Certificate();
-        cert.setReferenceNumber(refGen.next("CERT"));
-        cert.setVerificationCode(UUID.randomUUID().toString().replace("-", "").substring(0, 16).toUpperCase());
-        cert.setStudentUuid(req.studentUuid());
-        cert.setCourseUuid(req.courseUuid());
-        cert.setRecipientName(student.fullName().isBlank() ? student.getUsername() : student.fullName());
-        cert.setCourseTitle(course.getTitle());
-        cert.setIssuedOn(LocalDate.now());
-        cert.setExpiresOn(req.expiresOn());
-        cert.setAccreditingBody(req.accreditingBody());
-        cert.setAccreditationLevel(req.accreditationLevel());
-
-        Certificate saved = certificates.save(cert);
-        byte[] pdf = pdfGenerator.render(saved);
-        String key = storage.store(saved.getReferenceNumber() + ".pdf", pdf, "application/pdf");
-        saved.setPdfStorageKey(key);
-        return toResponse(certificates.save(saved));
+    /**
+     * Idempotently issue a certificate in response to a completion signal. Returns empty (rather than
+     * throwing) when auto-issue is disabled, a certificate already exists, or the course is not yet
+     * fully complete — so it is safe to call from an event listener on every candidate signal.
+     */
+    @Transactional
+    public Optional<CertificateResponse> issueAutomatic(String studentUuid, String courseUuid) {
+        if (!autoIssueEnabled) return Optional.empty();
+        if (certificates.findByStudentUuidAndCourseUuid(studentUuid, courseUuid).isPresent())
+            return Optional.empty();
+        if (!progress.isCourseCompleted(studentUuid, courseUuid)) return Optional.empty();
+        String body = (defaultAccreditingBody == null || defaultAccreditingBody.isBlank())
+                ? null : defaultAccreditingBody;
+        Certificate saved = buildAndStore(studentUuid, courseUuid, body, null, null);
+        return Optional.of(toResponse(saved));
     }
 
     /** Renewal: re-issues with a new expiry (cert-renewal revenue stream). */
@@ -115,6 +124,32 @@ public class CertificationService {
                             c.getIssuedOn(), c.getExpiresOn(), c.getAccreditingBody());
                 })
                 .orElse(new VerificationResult(false, "NOT_FOUND", null, null, null, null, null));
+    }
+
+    // ---- internals ----
+
+    private Certificate buildAndStore(String studentUuid, String courseUuid,
+                                      String accreditingBody, String accreditationLevel, LocalDate expiresOn) {
+        User student = users.getEntity(studentUuid);
+        Course course = courses.getEntity(courseUuid);
+
+        Certificate cert = new Certificate();
+        cert.setReferenceNumber(refGen.next("CERT"));
+        cert.setVerificationCode(UUID.randomUUID().toString().replace("-", "").substring(0, 16).toUpperCase());
+        cert.setStudentUuid(studentUuid);
+        cert.setCourseUuid(courseUuid);
+        cert.setRecipientName(student.fullName().isBlank() ? student.getUsername() : student.fullName());
+        cert.setCourseTitle(course.getTitle());
+        cert.setIssuedOn(LocalDate.now());
+        cert.setExpiresOn(expiresOn);
+        cert.setAccreditingBody(accreditingBody);
+        cert.setAccreditationLevel(accreditationLevel);
+
+        Certificate saved = certificates.save(cert);
+        byte[] pdf = pdfGenerator.render(saved);
+        String key = storage.store(saved.getReferenceNumber() + ".pdf", pdf, "application/pdf");
+        saved.setPdfStorageKey(key);
+        return certificates.save(saved);
     }
 
     private Certificate require(String uuid) {

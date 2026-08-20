@@ -31,6 +31,7 @@ export class ShellComponent {
   private readonly allNav: NavItem[] = [
     { label: 'Catalogue', link: '/catalog' },
     { label: 'My Learning', link: '/dashboard', requiresAuth: true },
+    { label: 'My Results', link: '/results', requiresAuth: true },
     { label: 'My Certificates', link: '/certificates', requiresAuth: true },
     { label: 'Administration', link: '/admin', roles: ['ADMIN', 'INSTRUCTOR'] },
   ];

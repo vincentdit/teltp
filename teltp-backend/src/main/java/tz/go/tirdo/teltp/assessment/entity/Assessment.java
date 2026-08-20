@@ -32,6 +32,18 @@ public class Assessment extends BaseEntity {
 
     private Integer timeLimitMinutes;
 
+    /**
+     * Maximum number of attempts a student may consume. {@code null} means unlimited.
+     * A passed attempt always closes the assessment regardless of remaining attempts.
+     */
+    private Integer maxAttempts;
+
+    /**
+     * Minimum minutes a student must wait after a completed (submitted/expired) attempt
+     * before starting another. {@code null} or 0 means no cooldown.
+     */
+    private Integer cooldownMinutes;
+
     /** Examination fee is a Billing concern; references a PricingPlan uuid, or null when free. */
     @Column(length = 36)
     private String pricingPlanUuid;
