@@ -82,6 +82,25 @@ public class AssessmentService {
         return assessments.findByCourseUuid(courseUuid).stream().map(this::toResponse).toList();
     }
 
+    /**
+     * Whether the student has satisfied the exam requirement for a course: true when the
+     * course has no EXAM, or when the student has a passed attempt for every EXAM it has.
+     * Consulted by the progress module when computing course completion.
+     */
+    @Transactional(readOnly = true)
+    public boolean hasSatisfiedExamGate(String studentUuid, String courseUuid) {
+        var exams = assessments.findByCourseUuid(courseUuid).stream()
+                .filter(a -> a.getType() == tz.go.tirdo.teltp.assessment.entity.AssessmentType.EXAM)
+                .toList();
+        if (exams.isEmpty()) return true;
+        for (var exam : exams) {
+            boolean passed = attempts.findByStudentUuidAndAssessmentUuid(studentUuid, exam.getUuid())
+                    .stream().anyMatch(at -> Boolean.TRUE.equals(at.getPassed()));
+            if (!passed) return false;
+        }
+        return true;
+    }
+
     /** Student-facing rendering with correct flags stripped. */
     @Transactional(readOnly = true)
     public AssessmentView view(String assessmentUuid) {

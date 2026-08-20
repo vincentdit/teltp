@@ -45,7 +45,7 @@ export class AdminHomeComponent {
     { label: 'Courses', icon: 'menu_book', link: '/admin/courses', ready: true },
     { label: 'Assessments', icon: 'quiz', ready: false },
     { label: 'Enrolments & Cohorts', icon: 'groups', ready: false },
-    { label: 'Certificates', icon: 'workspace_premium', ready: false },
+    { label: 'Certificates', icon: 'workspace_premium', link: '/admin/certificates', ready: true },
     { label: 'Schedule & Webinars', icon: 'event', ready: false },
     { label: 'Billing & Invoices', icon: 'receipt_long', ready: false },
     { label: 'Organizations', icon: 'apartment', ready: false },

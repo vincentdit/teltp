@@ -16,6 +16,18 @@ export const routes: Routes = [
       import('./features/auth/register/register.component').then((m) => m.RegisterComponent),
   },
 
+  // Public certificate verification
+  {
+    path: 'verify',
+    loadComponent: () =>
+      import('./features/verify/verify.component').then((m) => m.VerifyComponent),
+  },
+  {
+    path: 'verify/:code',
+    loadComponent: () =>
+      import('./features/verify/verify.component').then((m) => m.VerifyComponent),
+  },
+
   // Public catalog
   {
     path: 'catalog',
@@ -34,6 +46,18 @@ export const routes: Routes = [
     canActivate: [authGuard],
     loadComponent: () =>
       import('./features/dashboard/student-dashboard/student-dashboard.component').then((m) => m.StudentDashboardComponent),
+  },
+  {
+    path: 'certificates',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./features/certificates/my-certificates.component').then((m) => m.MyCertificatesComponent),
+  },
+  {
+    path: 'assessments/:uuid/take',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./features/assessment/take-assessment/take-assessment.component').then((m) => m.TakeAssessmentComponent),
   },
 
   // Course player (enrolled learners)
@@ -58,6 +82,13 @@ export const routes: Routes = [
     data: { roles: ['ADMIN', 'INSTRUCTOR'] },
     loadComponent: () =>
       import('./features/admin/course-manage/course-manage.component').then((m) => m.CourseManageComponent),
+  },
+  {
+    path: 'admin/certificates',
+    canActivate: [roleGuard],
+    data: { roles: ['ADMIN', 'INSTRUCTOR'] },
+    loadComponent: () =>
+      import('./features/admin/issue-certificate/issue-certificate.component').then((m) => m.IssueCertificateComponent),
   },
 
   { path: '**', redirectTo: 'catalog' },

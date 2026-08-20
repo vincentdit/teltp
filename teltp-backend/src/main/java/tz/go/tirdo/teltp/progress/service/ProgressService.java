@@ -2,6 +2,7 @@ package tz.go.tirdo.teltp.progress.service;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import tz.go.tirdo.teltp.assessment.service.AssessmentService;
 import tz.go.tirdo.teltp.catalog.repository.LessonRepository;
 import tz.go.tirdo.teltp.progress.dto.ProgressDtos.*;
 import tz.go.tirdo.teltp.progress.entity.LessonProgress;
@@ -20,10 +21,13 @@ public class ProgressService {
 
     private final LessonProgressRepository progress;
     private final LessonRepository lessons;
+    private final AssessmentService assessments;
 
-    public ProgressService(LessonProgressRepository progress, LessonRepository lessons) {
+    public ProgressService(LessonProgressRepository progress, LessonRepository lessons,
+                           AssessmentService assessments) {
         this.progress = progress;
         this.lessons = lessons;
+        this.assessments = assessments;
     }
 
     @Transactional
@@ -48,7 +52,9 @@ public class ProgressService {
         long mandatory = lessons.countByModuleCourseUuidAndMandatoryTrue(courseUuid);
         long completed = progress.countByStudentUuidAndCourseUuidAndCompletedTrue(studentUuid, courseUuid);
         int percent = mandatory == 0 ? 0 : (int) Math.round(100.0 * completed / mandatory);
-        boolean courseCompleted = mandatory > 0 && completed >= mandatory;
+        boolean lessonsDone = mandatory > 0 && completed >= mandatory;
+        boolean examSatisfied = assessments.hasSatisfiedExamGate(studentUuid, courseUuid);
+        boolean courseCompleted = lessonsDone && examSatisfied;
         return new CourseProgressResponse(courseUuid, mandatory, completed, percent, courseCompleted);
     }
 

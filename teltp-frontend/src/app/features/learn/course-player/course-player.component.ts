@@ -9,6 +9,8 @@ import { CatalogService } from '../../../core/services/catalog.service';
 import { ProgressService } from '../../../core/services/progress.service';
 import { CourseCurriculumResponse, CurriculumLesson } from '../../../core/models/catalog.model';
 import { CourseProgressResponse } from '../../../core/models/enrollment.model';
+import { AssessmentService } from '../../../core/services/assessment.service';
+import { AssessmentSummary } from '../../../core/models/assessment.model';
 
 @Component({
   selector: 'app-course-player',
@@ -40,10 +42,23 @@ import { CourseProgressResponse } from '../../../core/models/enrollment.model';
               <mat-icon>workspace_premium</mat-icon>
               <div>
                 <strong>Course complete.</strong>
-                <p class="muted">You've finished all required lessons. A certificate can now be issued by your instructor.</p>
+                <p class="muted">You've met all the requirements for this course. A certificate can now be issued by your instructor.</p>
               </div>
             </div>
           }
+        }
+
+        @if (assessment(); as asmt) {
+          <a class="surface-card asmt-card" [routerLink]="['/assessments', asmt.uuid, 'take']"
+             [queryParams]="{ courseUuid: uuid() }">
+            <mat-icon>quiz</mat-icon>
+            <div class="asmt-body">
+              <strong>{{ asmt.title }}</strong>
+              <span class="muted">{{ asmt.type === 'EXAM' ? 'Exam' : 'Quiz' }} · pass mark {{ asmt.passMark }}%</span>
+            </div>
+            <span class="spacer"></span>
+            <span class="take">Take <mat-icon>arrow_forward</mat-icon></span>
+          </a>
         }
 
         <div class="layout">
@@ -123,6 +138,13 @@ import { CourseProgressResponse } from '../../../core/models/enrollment.model';
     .actions { gap: 12px; margin-top: 20px; flex-wrap: wrap; }
     .empty { text-align: center; padding: 48px; display: flex; flex-direction: column; align-items: center; gap: 10px; }
     .empty mat-icon { font-size: 40px; height: 40px; width: 40px; color: var(--teltp-muted); }
+    .asmt-card { display: flex; align-items: center; gap: 14px; padding: 16px 18px; margin-bottom: 20px;
+      text-decoration: none; color: inherit; border-left: 4px solid var(--teltp-accent); transition: border-color .15s; }
+    .asmt-card:hover { border-color: var(--teltp-brand); }
+    .asmt-card > mat-icon { color: var(--teltp-accent); }
+    .asmt-body { display: flex; flex-direction: column; }
+    .asmt-card .take { display: inline-flex; align-items: center; gap: 4px; color: var(--teltp-brand); font-weight: 600; }
+    .asmt-card .take mat-icon { font-size: 18px; height: 18px; width: 18px; }
     @media (max-width: 860px) { .layout { grid-template-columns: 1fr; } }
   `],
 })
@@ -131,11 +153,13 @@ export class CoursePlayerComponent implements OnInit {
 
   private readonly catalog = inject(CatalogService);
   private readonly progressApi = inject(ProgressService);
+  private readonly assessmentApi = inject(AssessmentService);
 
   readonly loading = signal(true);
   readonly marking = signal(false);
   readonly curriculum = signal<CourseCurriculumResponse | null>(null);
   readonly progress = signal<CourseProgressResponse | null>(null);
+  readonly assessment = signal<AssessmentSummary | null>(null);
   readonly selected = signal<CurriculumLesson | null>(null);
   // Completed lesson UUIDs, seeded from the backend on load and updated as you mark lessons.
   private readonly completed = signal<Set<string>>(new Set());
@@ -154,6 +178,7 @@ export class CoursePlayerComponent implements OnInit {
       error: () => this.loading.set(false),
     });
     this.progressApi.courseProgress(id).subscribe({ next: (p) => this.progress.set(p) });
+    this.assessmentApi.forCourse(id).subscribe({ next: (list) => this.assessment.set(list[0] ?? null) });
     this.progressApi.lessonProgress(id).subscribe({
       next: (rows) => this.completed.set(new Set(rows.filter((r) => r.completed).map((r) => r.lessonUuid))),
     });
