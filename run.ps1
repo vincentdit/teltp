@@ -4,6 +4,7 @@
   Commands:
     start        Build (if needed) and start the whole stack in the background
     up           Build and run in the foreground (streams logs; Ctrl+C to stop)
+    test [class] Run backend unit tests in a Maven container (all, or one class)
     stop         Stop and remove the containers (keeps the database volume)
     reset        Stop and DELETE all data (database volume too), then you can start fresh
     logs         Follow logs from all services
@@ -49,6 +50,13 @@ switch ($Command.ToLower()) {
     Assert-Docker
     docker compose up --build
   }
+  "test" {
+    Assert-Docker
+    $mvnArgs = @("test")
+    if ($Arg) { $mvnArgs = @("-Dtest=$Arg", "test") }   # e.g. .\run.ps1 test AssessmentServiceTest
+    Write-Host "Running backend tests in a Maven container (deps cached in the 'teltp-m2' volume)..." -ForegroundColor Cyan
+    docker run --rm -v "${PSScriptRoot}\teltp-backend:/app" -w /app -v teltp-m2:/root/.m2 maven:3.9-eclipse-temurin-21 mvn @mvnArgs
+  }
   "stop" {
     docker compose down
     Write-Host "Stopped. Data is preserved. Start again with: .\run.ps1 start"
@@ -76,6 +84,7 @@ switch ($Command.ToLower()) {
     Write-Host "TeLTP task runner" -ForegroundColor Cyan
     Write-Host "  .\run.ps1 start          Build + start in background"
     Write-Host "  .\run.ps1 up             Build + run in foreground (Ctrl+C stops)"
+    Write-Host "  .\run.ps1 test [class]   Run backend unit tests (optionally one test class)"
     Write-Host "  .\run.ps1 stop           Stop (keeps data)"
     Write-Host "  .\run.ps1 reset          Stop + delete all data"
     Write-Host "  .\run.ps1 logs [svc]     Follow logs (svc = backend|frontend|db)"
