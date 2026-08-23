@@ -32,3 +32,29 @@ export interface LessonProgressView {
   completed: boolean;
   percentComplete: number;
 }
+
+// ---- cohorts ----
+export interface CohortResponse {
+  uuid: string;
+  courseUuid: string;
+  name: string;
+  startDate?: string;
+  endDate?: string;
+  capacity?: number;
+  activeCount: number;
+}
+
+export interface CohortRequest {
+  courseUuid: string;
+  name: string;
+  startDate?: string;
+  endDate?: string;
+  capacity?: number;
+}
+
+export interface AdminAssignRequest {
+  courseUuid: string;
+  cohortUuid?: string;
+  organizationUuid: string;
+  studentUuids: string[];
+}

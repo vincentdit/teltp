@@ -147,3 +147,28 @@ export interface GradeAnswerRequest {
   awardedPoints: number;
   feedback?: string;
 }
+
+// ---- authoring ----
+export interface OptionRequest {
+  text: string;
+  correct: boolean;
+}
+
+export interface CreateAssessmentRequest {
+  courseUuid: string;
+  title: string;
+  type: AssessmentType;
+  passMark: number;
+  timeLimitMinutes?: number;
+  maxAttempts?: number;
+  cooldownMinutes?: number;
+  pricingPlanUuid?: string;
+}
+
+export interface AddQuestionRequest {
+  assessmentUuid: string;
+  prompt: string;
+  type: QuestionType;
+  points: number;
+  options: OptionRequest[];
+}

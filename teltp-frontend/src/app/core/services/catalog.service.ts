@@ -30,6 +30,11 @@ export class CatalogService {
     return this.api.post<CourseResponse>('/catalog/courses', req);
   }
 
+  assignInstructor(courseUuid: string, instructorUuid: string | null): Observable<CourseResponse> {
+    const q = instructorUuid ? `?instructorUuid=${instructorUuid}` : '';
+    return this.api.patch<CourseResponse>(`/catalog/courses/${courseUuid}/instructor${q}`, {});
+  }
+
   transition(uuid: string, req: TransitionRequest): Observable<CourseResponse> {
     return this.api.post<CourseResponse>(`/catalog/courses/${uuid}/transition`, req);
   }

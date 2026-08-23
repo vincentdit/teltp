@@ -15,4 +15,5 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, Long> {
     Page<Enrollment> findByStudentUuid(String studentUuid, Pageable pageable);
     List<Enrollment> findByCourseUuidAndStatus(String courseUuid, EnrollmentStatus status);
     long countByCohortUuidAndStatus(String cohortUuid, EnrollmentStatus status);
+    long countByCourseUuid(String courseUuid);
 }

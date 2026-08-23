@@ -8,14 +8,17 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { FormsModule } from '@angular/forms';
 import { CatalogService } from '../../../core/services/catalog.service';
+import { UserService } from '../../../core/services/user.service';
+import { UserResponse } from '../../../core/models/user.model';
 import { CourseResponse, CourseStatus, DeliveryMode } from '../../../core/models/catalog.model';
 
 @Component({
   selector: 'app-course-manage',
   standalone: true,
   imports: [
-    ReactiveFormsModule, MatCardModule, MatFormFieldModule, MatInputModule,
+    ReactiveFormsModule, FormsModule, MatCardModule, MatFormFieldModule, MatInputModule,
     MatSelectModule, MatButtonModule, MatIconModule, MatChipsModule,
   ],
   template: `
@@ -54,7 +57,38 @@ import { CourseResponse, CourseStatus, DeliveryMode } from '../../../core/models
           <button mat-flat-button color="primary" type="submit" [disabled]="form.invalid || saving()">
             <mat-icon>add</mat-icon> Create course
           </button>
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Instructor (optional)</mat-label>
+            <mat-select formControlName="instructorUuid">
+              <mat-option [value]="null">— unassigned —</mat-option>
+              @for (i of instructors(); track i.uuid) { <mat-option [value]="i.uuid">{{ i.fullName || i.username }}</mat-option> }
+            </mat-select>
+          </mat-form-field>
         </form>
+      </mat-card>
+
+      <mat-card class="surface-card course-instructors">
+        <h3>Course instructors</h3>
+        <p class="muted small">Assign an instructor to any published course. This drives the Trainer report.</p>
+        @if (allCourses().length === 0) {
+          <p class="muted">No published courses yet.</p>
+        } @else {
+          <div class="stack">
+            @for (c of allCourses(); track c.uuid) {
+              <div class="ci-row">
+                <div><strong>{{ c.title }}</strong><span class="muted">{{ c.referenceNumber }}</span></div>
+                <span class="spacer"></span>
+                <mat-form-field appearance="outline" class="ci-select" subscriptSizing="dynamic">
+                  <mat-label>Instructor</mat-label>
+                  <mat-select [ngModel]="c.instructorUuid ?? null" (ngModelChange)="setInstructor(c, $event)">
+                    <mat-option [value]="null">— unassigned —</mat-option>
+                    @for (i of instructors(); track i.uuid) { <mat-option [value]="i.uuid">{{ i.fullName || i.username }}</mat-option> }
+                  </mat-select>
+                </mat-form-field>
+              </div>
+            }
+          </div>
+        }
       </mat-card>
 
       @if (created().length > 0) {
@@ -84,6 +118,13 @@ import { CourseResponse, CourseStatus, DeliveryMode } from '../../../core/models
     </div>
   `,
   styles: [`
+    .course-instructors { margin-top: 20px; }
+    .small { font-size: 0.85rem; }
+    .ci-row { display: flex; align-items: center; gap: 12px; padding: 8px 4px; border-bottom: 1px solid var(--teltp-line); }
+    .ci-row:last-child { border-bottom: none; }
+    .ci-row > div { display: flex; flex-direction: column; }
+    .ci-row .muted { font-size: 0.82rem; }
+    .ci-select { width: 240px; }
     .form-card { padding: 22px; margin-bottom: 28px; }
     .form-card h3 { margin-top: 0; }
     .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
@@ -97,17 +138,42 @@ import { CourseResponse, CourseStatus, DeliveryMode } from '../../../core/models
 })
 export class CourseManageComponent {
   private readonly fb = inject(FormBuilder);
+  private readonly userApi = inject(UserService);
   private readonly catalog = inject(CatalogService);
   private readonly snack = inject(MatSnackBar);
 
   readonly saving = signal(false);
   readonly created = signal<CourseResponse[]>([]);
+  readonly instructors = signal<UserResponse[]>([]);
+  readonly allCourses = signal<CourseResponse[]>([]);
 
-  readonly form = this.fb.nonNullable.group({
+  constructor() {
+    this.userApi.list(0, 200).subscribe({
+      next: (p) => this.instructors.set(p.content.filter((u) => u.roles.includes('INSTRUCTOR'))),
+    });
+    this.reloadCourses();
+  }
+
+  private reloadCourses(): void {
+    this.catalog.publishedCourses(0, 200).subscribe({ next: (p) => this.allCourses.set(p.content) });
+  }
+
+  setInstructor(c: CourseResponse, instructorUuid: string | null): void {
+    this.catalog.assignInstructor(c.uuid, instructorUuid).subscribe({
+      next: (updated) => {
+        this.allCourses.update((list) => list.map((x) => (x.uuid === updated.uuid ? updated : x)));
+        this.snack.open('Instructor updated.', 'Dismiss', { duration: 2500 });
+      },
+      error: (e) => this.snack.open(e?.error?.message || 'Could not update instructor.', 'Dismiss', { duration: 4000 }),
+    });
+  }
+
+  readonly form = this.fb.group({
     title: ['', Validators.required],
     deliveryMode: ['ONLINE' as DeliveryMode, Validators.required],
     durationHours: [null as number | null],
     description: [''],
+    instructorUuid: [null as string | null],
   });
 
   create(): void {
@@ -115,14 +181,16 @@ export class CourseManageComponent {
     this.saving.set(true);
     const v = this.form.getRawValue();
     this.catalog.createCourse({
-      title: v.title,
-      deliveryMode: v.deliveryMode,
+      title: v.title!,
+      deliveryMode: v.deliveryMode!,
       durationHours: v.durationHours ?? undefined,
       description: v.description || undefined,
+      instructorUuid: v.instructorUuid || undefined,
     }).subscribe({
       next: (c) => {
         this.created.update((list) => [c, ...list]);
-        this.form.reset({ deliveryMode: 'ONLINE', durationHours: null, title: '', description: '' });
+        this.reloadCourses();
+        this.form.reset({ deliveryMode: 'ONLINE', durationHours: null, title: '', description: '', instructorUuid: null });
         this.saving.set(false);
         this.snack.open('Course created', 'OK', { duration: 3000 });
       },

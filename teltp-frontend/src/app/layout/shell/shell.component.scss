@@ -11,12 +11,26 @@
 
 .brand {
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  gap: 10px;
   line-height: 1.05;
   text-decoration: none;
   color: #fff;
   margin-right: 20px;
 }
+.brand-text { display: flex; flex-direction: column; }
+.brand-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff;
+  border-radius: 9px;
+  padding: 4px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+}
+.brand-badge img { display: block; height: 30px; width: auto; }
+.brand-badge.sm { padding: 3px; border-radius: 7px; margin-right: 8px; vertical-align: middle; }
+.brand-badge.sm img { height: 20px; }
 .brand-mark { font-family: 'Spectral', serif; font-weight: 700; font-size: 1.3rem; }
 .brand-sub  { font-size: 0.66rem; letter-spacing: 0.10em; text-transform: uppercase; opacity: 0.75; }
 
@@ -30,9 +44,14 @@ main { min-height: calc(100vh - 64px - 56px); }
 .teltp-footer {
   border-top: 1px solid var(--teltp-line);
   background: var(--teltp-surface);
-  padding: 18px 20px;
+  padding: 16px 20px;
   text-align: center;
   font-size: 0.82rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  flex-wrap: wrap;
 }
 .teltp-footer .muted { color: var(--teltp-muted); }
 

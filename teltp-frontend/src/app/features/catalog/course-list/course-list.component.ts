@@ -7,19 +7,20 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { CatalogService } from '../../../core/services/catalog.service';
 import { CourseResponse } from '../../../core/models/catalog.model';
+import { HeroComponent } from '../../../layout/hero/hero.component';
 
 @Component({
   selector: 'app-course-list',
   standalone: true,
   imports: [
     RouterLink, MatCardModule, MatButtonModule, MatIconModule,
-    MatProgressSpinnerModule, MatPaginatorModule,
+    MatProgressSpinnerModule, MatPaginatorModule, HeroComponent,
   ],
   template: `
+    <app-hero eyebrow="TIRDO Training Hub" title="Course catalogue"
+              subtitle="Industrial, digital, research, environmental and enterprise skills training."
+              [showLogo]="true" />
     <div class="page">
-      <h1 class="page-title">Course catalogue</h1>
-      <p class="page-subtitle">Industrial, digital, research, environmental and enterprise skills training.</p>
-
       @if (loading()) {
         <div class="center"><mat-spinner diameter="36" /></div>
       } @else if (courses().length === 0) {

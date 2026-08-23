@@ -1,15 +1,15 @@
 @use '@angular/material' as mat;
 
 // ---- Angular Material M3 theme ----------------------------------------------
-// Sober institutional palette: green primary (TIRDO), cyan tertiary.
+// TIRDO institutional palette: blue primary, gold tertiary.
 // Typography pairs Spectral (display/brand) with Public Sans (body/plain).
 html {
   color-scheme: light;
   @include mat.theme((
     color: (
       theme-type: light,
-      primary: mat.$green-palette,
-      tertiary: mat.$cyan-palette,
+      primary: mat.$blue-palette,
+      tertiary: mat.$yellow-palette,
     ),
     typography: (
       plain-family: 'Public Sans, system-ui, sans-serif',
@@ -27,11 +27,11 @@ html {
   --teltp-bg: #f6f5f1;          // warm neutral surface
   --teltp-surface: #ffffff;
   --teltp-ink: #1c1f1a;
-  --teltp-muted: #5b6159;
+  --teltp-muted: #4a4f48;
   --teltp-line: #e3e1d8;
-  --teltp-brand: #2e6b41;        // deep green
-  --teltp-brand-dark: #1f4d2d;
-  --teltp-accent: #b9892f;       // muted gold accent
+  --teltp-brand: #1a4d98;        // TIRDO blue
+  --teltp-brand-dark: #10315f;   // deep navy
+  --teltp-accent: #e6a300;       // TIRDO gold
   --teltp-radius: 12px;
   --teltp-gap: 16px;
   --teltp-maxw: 1180px;

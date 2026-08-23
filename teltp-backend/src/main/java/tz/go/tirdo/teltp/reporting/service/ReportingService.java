@@ -9,9 +9,11 @@ import tz.go.tirdo.teltp.billing.entity.Payment;
 import tz.go.tirdo.teltp.billing.entity.PaymentStatus;
 import tz.go.tirdo.teltp.billing.repository.InvoiceRepository;
 import tz.go.tirdo.teltp.billing.repository.PaymentRepository;
+import tz.go.tirdo.teltp.catalog.entity.Course;
 import tz.go.tirdo.teltp.catalog.entity.CourseStatus;
 import tz.go.tirdo.teltp.catalog.repository.CourseRepository;
 import tz.go.tirdo.teltp.certification.repository.CertificateRepository;
+import tz.go.tirdo.teltp.enrollment.repository.EnrollmentRepository;
 import tz.go.tirdo.teltp.organization.entity.OrganizationType;
 import tz.go.tirdo.teltp.organization.repository.OrganizationRepository;
 import tz.go.tirdo.teltp.reporting.dto.ReportingDtos.*;
@@ -34,16 +36,18 @@ public class ReportingService {
     private final OrganizationRepository organizations;
     private final InvoiceRepository invoices;
     private final PaymentRepository payments;
+    private final EnrollmentRepository enrollments;
 
     public ReportingService(UserRepository users, CourseRepository courses, CertificateRepository certificates,
                             OrganizationRepository organizations, InvoiceRepository invoices,
-                            PaymentRepository payments) {
+                            PaymentRepository payments, EnrollmentRepository enrollments) {
         this.users = users;
         this.courses = courses;
         this.certificates = certificates;
         this.organizations = organizations;
         this.invoices = invoices;
         this.payments = payments;
+        this.enrollments = enrollments;
     }
 
     @Transactional(readOnly = true)
@@ -74,6 +78,41 @@ public class ReportingService {
                         e.getValue().size()))
                 .toList();
         return new RevenueDashboard(confirmedRevenue(), "TZS", rows);
+    }
+
+    @Transactional(readOnly = true)
+    public CompletionDashboard completion() {
+        List<CompletionRow> rows = courses.findAll().stream()
+                .filter(c -> c.getStatus() == CourseStatus.PUBLISHED)
+                .map(c -> {
+                    long enrolled = enrollments.countByCourseUuid(c.getUuid());
+                    long completed = certificates.countByCourseUuid(c.getUuid());
+                    int rate = enrolled == 0 ? 0 : (int) Math.round(100.0 * completed / enrolled);
+                    return new CompletionRow(c.getUuid(), c.getTitle(), enrolled, completed, rate);
+                })
+                .toList();
+        return new CompletionDashboard(rows);
+    }
+
+    @Transactional(readOnly = true)
+    public TrainerDashboard trainer() {
+        Map<String, List<Course>> byInstructor = courses.findAll().stream()
+                .filter(c -> c.getInstructorUuid() != null)
+                .collect(Collectors.groupingBy(Course::getInstructorUuid));
+        List<TrainerRow> rows = byInstructor.entrySet().stream()
+                .map(e -> {
+                    long learners = e.getValue().stream()
+                            .mapToLong(c -> enrollments.countByCourseUuid(c.getUuid())).sum();
+                    String name = users.findByUuid(e.getKey())
+                            .map(u -> {
+                                String fn = u.fullName();
+                                return (fn == null || fn.isBlank()) ? u.getUsername() : fn;
+                            })
+                            .orElse(e.getKey());
+                    return new TrainerRow(e.getKey(), name, e.getValue().size(), learners);
+                })
+                .toList();
+        return new TrainerDashboard(rows);
     }
 
     private BigDecimal confirmedRevenue() {

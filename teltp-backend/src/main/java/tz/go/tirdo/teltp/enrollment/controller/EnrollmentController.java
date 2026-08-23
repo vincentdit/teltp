@@ -11,6 +11,7 @@ import tz.go.tirdo.teltp.enrollment.dto.EnrollmentDtos.*;
 import tz.go.tirdo.teltp.enrollment.service.EnrollmentService;
 import tz.go.tirdo.teltp.security.CurrentUser;
 
+import java.util.List;
 import java.util.Set;
 
 @RestController
@@ -23,6 +24,12 @@ public class EnrollmentController {
     public EnrollmentController(EnrollmentService service, UserService users) {
         this.service = service;
         this.users = users;
+    }
+
+    @GetMapping("/cohorts")
+    @PreAuthorize("hasAnyRole('ADMIN','INSTRUCTOR')")
+    public ApiResponse<List<CohortResponse>> listCohorts(@RequestParam String courseUuid) {
+        return ApiResponse.ok(service.listCohorts(courseUuid));
     }
 
     @PostMapping("/cohorts")

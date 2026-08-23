@@ -30,10 +30,11 @@ export class ShellComponent {
 
   private readonly allNav: NavItem[] = [
     { label: 'Catalogue', link: '/catalog' },
-    { label: 'My Learning', link: '/dashboard', requiresAuth: true },
-    { label: 'My Results', link: '/results', requiresAuth: true },
-    { label: 'My Certificates', link: '/certificates', requiresAuth: true },
+    { label: 'Home', link: '/dashboard', requiresAuth: true },
+    { label: 'My Results', link: '/results', roles: ['STUDENT'] },
+    { label: 'My Certificates', link: '/certificates', roles: ['STUDENT'] },
     { label: 'Administration', link: '/admin', roles: ['ADMIN', 'INSTRUCTOR'] },
+    { label: 'Reports', link: '/admin/reporting', roles: ['ADMIN', 'FINANCE_OFFICER'] },
   ];
 
   readonly nav = computed<NavItem[]>(() =>

@@ -27,4 +27,16 @@ public class ReportingController {
     public ApiResponse<RevenueDashboard> revenue() {
         return ApiResponse.ok(service.revenue());
     }
+
+    @GetMapping("/completion")
+    @PreAuthorize("hasAnyRole('ADMIN','FINANCE_OFFICER','INSTRUCTOR')")
+    public ApiResponse<CompletionDashboard> completion() {
+        return ApiResponse.ok(service.completion());
+    }
+
+    @GetMapping("/trainer")
+    @PreAuthorize("hasAnyRole('ADMIN','FINANCE_OFFICER')")
+    public ApiResponse<TrainerDashboard> trainer() {
+        return ApiResponse.ok(service.trainer());
+    }
 }

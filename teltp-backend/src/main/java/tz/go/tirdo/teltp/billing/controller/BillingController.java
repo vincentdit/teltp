@@ -4,12 +4,14 @@ import jakarta.validation.Valid;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import tz.go.tirdo.teltp.auth.service.UserService;
 import tz.go.tirdo.teltp.billing.dto.BillingDtos.*;
 import tz.go.tirdo.teltp.billing.service.BillingService;
 import tz.go.tirdo.teltp.billing.service.PricingService;
 import tz.go.tirdo.teltp.billing.service.SubscriptionService;
 import tz.go.tirdo.teltp.common.ApiResponse;
 import tz.go.tirdo.teltp.common.PageResponse;
+import tz.go.tirdo.teltp.security.CurrentUser;
 
 import java.util.List;
 
@@ -20,11 +22,14 @@ public class BillingController {
     private final PricingService pricing;
     private final BillingService billing;
     private final SubscriptionService subscriptions;
+    private final UserService users;
 
-    public BillingController(PricingService pricing, BillingService billing, SubscriptionService subscriptions) {
+    public BillingController(PricingService pricing, BillingService billing,
+                             SubscriptionService subscriptions, UserService users) {
         this.pricing = pricing;
         this.billing = billing;
         this.subscriptions = subscriptions;
+        this.users = users;
     }
 
     // --- pricing plans ---
@@ -45,6 +50,13 @@ public class BillingController {
     @PreAuthorize("hasAnyRole('ADMIN','FINANCE_OFFICER')")
     public ApiResponse<InvoiceResponse> createInvoice(@Valid @RequestBody CreateInvoiceRequest req) {
         return ApiResponse.ok("Invoice created", billing.createInvoice(req));
+    }
+
+    @GetMapping("/invoices/mine")
+    @PreAuthorize("isAuthenticated()")
+    public ApiResponse<PageResponse<InvoiceResponse>> myInvoices(Pageable pageable) {
+        String uuid = users.uuidForUsername(CurrentUser.requireUsername());
+        return ApiResponse.ok(billing.invoicesForPayer(uuid, pageable));
     }
 
     @GetMapping("/invoices/{uuid}")

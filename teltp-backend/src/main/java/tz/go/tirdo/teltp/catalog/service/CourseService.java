@@ -58,6 +58,13 @@ public class CourseService {
         return toResponse(courses.save(c));
     }
 
+    @Transactional
+    public CourseResponse assignInstructor(String uuid, String instructorUuid) {
+        Course c = require(uuid);
+        c.setInstructorUuid(instructorUuid == null || instructorUuid.isBlank() ? null : instructorUuid);
+        return toResponse(courses.save(c));
+    }
+
     @Transactional(readOnly = true)
     public PageResponse<CourseResponse> listPublished(Pageable pageable) {
         return PageResponse.from(courses.findByStatus(CourseStatus.PUBLISHED, pageable), this::toResponse);

@@ -2,8 +2,9 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { ApiService } from './api.service';
 import {
-  AssessmentSummary, AssessmentView, AttemptEligibility, AttemptGradingView, AttemptResponse,
-  AttemptSummary, GradeAnswerRequest, MyAttemptResult, MyAttemptSummary, SubmitAttemptRequest,
+  AddQuestionRequest, AssessmentSummary, AssessmentView, AttemptEligibility, AttemptGradingView,
+  AttemptResponse, AttemptSummary, CreateAssessmentRequest, GradeAnswerRequest, MyAttemptResult,
+  MyAttemptSummary, QuestionView, SubmitAttemptRequest,
 } from '../models/assessment.model';
 
 @Injectable({ providedIn: 'root' })
@@ -52,5 +53,14 @@ export class AssessmentService {
 
   grade(req: GradeAnswerRequest): Observable<AttemptResponse> {
     return this.api.post<AttemptResponse>('/assessments/grade', req);
+  }
+
+  // ---- authoring ----
+  createAssessment(req: CreateAssessmentRequest): Observable<AssessmentSummary> {
+    return this.api.post<AssessmentSummary>('/assessments', req);
+  }
+
+  addQuestion(req: AddQuestionRequest): Observable<QuestionView> {
+    return this.api.post<QuestionView>('/assessments/questions', req);
   }
 }

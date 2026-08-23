@@ -32,6 +32,11 @@ public class EnrollmentService {
         this.courseService = courseService;
     }
 
+    @Transactional(readOnly = true)
+    public java.util.List<CohortResponse> listCohorts(String courseUuid) {
+        return cohorts.findByCourseUuid(courseUuid).stream().map(this::toCohortResponse).toList();
+    }
+
     @Transactional
     public CohortResponse createCohort(CohortRequest req) {
         courseService.getEntity(req.courseUuid()); // validates course exists

@@ -1,5 +1,6 @@
 import { Component, OnInit, inject, input, signal } from '@angular/core';
 import { Router } from '@angular/router';
+import { RouterLink } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -9,22 +10,22 @@ import { CatalogService } from '../../../core/services/catalog.service';
 import { EnrollmentService } from '../../../core/services/enrollment.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { CourseResponse } from '../../../core/models/catalog.model';
+import { HeroComponent } from '../../../layout/hero/hero.component';
 
 @Component({
   selector: 'app-course-detail',
   standalone: true,
-  imports: [MatCardModule, MatButtonModule, MatIconModule, MatProgressSpinnerModule],
+  imports: [RouterLink, MatCardModule, MatButtonModule, MatIconModule, MatProgressSpinnerModule, HeroComponent],
   template: `
-    <div class="page">
-      @if (loading()) {
-        <div class="center"><mat-spinner diameter="36" /></div>
-      } @else if (course(); as c) {
+    @if (loading()) {
+      <div class="page"><div class="center"><mat-spinner diameter="36" /></div></div>
+    } @else if (course(); as c) {
+      <app-hero eyebrow="TIRDO Course" [title]="c.title" [subtitle]="c.referenceNumber" />
+      <div class="page">
         <div class="row gap top">
           <span class="chip">{{ label(c.deliveryMode) }}</span>
           @if (c.durationHours) { <span class="chip accent">{{ c.durationHours }} hours</span> }
         </div>
-        <h1 class="page-title">{{ c.title }}</h1>
-        <p class="muted ref">{{ c.referenceNumber }}</p>
 
         <mat-card class="surface-card body">
           <p>{{ c.description || 'No description provided for this course.' }}</p>
@@ -40,10 +41,10 @@ import { CourseResponse } from '../../../core/models/catalog.model';
         @if (c.pricingPlanUuid) {
           <p class="muted note">This is a paid course — enrolment creates an invoice payable via GePG, mobile money or bank transfer.</p>
         }
-      } @else {
-        <p class="muted">Course not found.</p>
-      }
-    </div>
+      </div>
+    } @else {
+      <div class="page"><p class="muted">Course not found.</p></div>
+    }
   `,
   styles: [`
     .center { display: flex; justify-content: center; padding: 60px; }

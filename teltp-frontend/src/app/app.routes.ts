@@ -110,6 +110,61 @@ export const routes: Routes = [
     loadComponent: () =>
       import('./features/admin/grading/grade-attempt.component').then((m) => m.GradeAttemptComponent),
   },
+  {
+    path: 'admin/assessments',
+    canActivate: [roleGuard],
+    data: { roles: ['ADMIN', 'INSTRUCTOR'] },
+    loadComponent: () =>
+      import('./features/admin/assessment-manage/assessment-manage.component').then((m) => m.AssessmentManageComponent),
+  },
+  {
+    path: 'admin/assessments/:uuid',
+    canActivate: [roleGuard],
+    data: { roles: ['ADMIN', 'INSTRUCTOR'] },
+    loadComponent: () =>
+      import('./features/admin/assessment-manage/assessment-edit.component').then((m) => m.AssessmentEditComponent),
+  },
+  {
+    path: 'admin/users',
+    canActivate: [roleGuard],
+    data: { roles: ['ADMIN'] },
+    loadComponent: () =>
+      import('./features/admin/system-users/system-users.component').then((m) => m.SystemUsersComponent),
+  },
+  {
+    path: 'admin/cohorts',
+    canActivate: [roleGuard],
+    data: { roles: ['ADMIN', 'INSTRUCTOR'] },
+    loadComponent: () =>
+      import('./features/admin/cohorts/cohorts-manage.component').then((m) => m.CohortsManageComponent),
+  },
+  {
+    path: 'admin/reporting',
+    canActivate: [roleGuard],
+    data: { roles: ['ADMIN', 'FINANCE_OFFICER'] },
+    loadComponent: () =>
+      import('./features/admin/reporting/reporting-dashboard.component').then((m) => m.ReportingDashboardComponent),
+  },
+  {
+    path: 'admin/organizations',
+    canActivate: [roleGuard],
+    data: { roles: ['ADMIN'] },
+    loadComponent: () =>
+      import('./features/admin/organizations/organizations-manage.component').then((m) => m.OrganizationsManageComponent),
+  },
+  {
+    path: 'pay/:courseUuid',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./features/payment/payment.component').then((m) => m.PaymentComponent),
+  },
+  {
+    path: 'admin/billing',
+    canActivate: [roleGuard],
+    data: { roles: ['ADMIN', 'FINANCE_OFFICER'] },
+    loadComponent: () =>
+      import('./features/admin/billing/billing-admin.component').then((m) => m.BillingAdminComponent),
+  },
 
   { path: '**', redirectTo: 'catalog' },
 ];

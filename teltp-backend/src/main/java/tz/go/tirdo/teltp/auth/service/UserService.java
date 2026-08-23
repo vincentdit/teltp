@@ -28,6 +28,12 @@ public class UserService {
     }
 
     @Transactional(readOnly = true)
+    public PageResponse<UserResponse> search(String q, Pageable pageable) {
+        if (q == null || q.isBlank()) return list(pageable);
+        return PageResponse.from(users.search(q.trim(), pageable), mapper::toResponse);
+    }
+
+    @Transactional(readOnly = true)
     public UserResponse get(String uuid) {
         return mapper.toResponse(require(uuid));
     }

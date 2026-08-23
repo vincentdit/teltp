@@ -21,6 +21,6 @@ public final class ReportingDtos {
     public record CompletionRow(String courseUuid, String courseTitle, long enrolled, long completed, int completionRate) {}
     public record CompletionDashboard(List<CompletionRow> rows) {}
 
-    public record TrainerRow(String instructorUuid, long coursesAuthored, long learnersTaught) {}
+    public record TrainerRow(String instructorUuid, String instructorName, long coursesAuthored, long learnersTaught) {}
     public record TrainerDashboard(List<TrainerRow> rows) {}
 }

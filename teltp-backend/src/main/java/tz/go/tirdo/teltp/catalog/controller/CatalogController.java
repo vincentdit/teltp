@@ -68,6 +68,13 @@ public class CatalogController {
         return ApiResponse.ok(courses.transition(uuid, req));
     }
 
+    @PatchMapping("/courses/{uuid}/instructor")
+    @PreAuthorize("hasAnyRole('ADMIN','INSTRUCTOR')")
+    public ApiResponse<CourseResponse> assignInstructor(@PathVariable String uuid,
+                                                        @RequestParam(required = false) String instructorUuid) {
+        return ApiResponse.ok("Instructor updated", courses.assignInstructor(uuid, instructorUuid));
+    }
+
     // --- curriculum ---
     @PostMapping("/modules")
     @PreAuthorize("hasAnyRole('ADMIN','INSTRUCTOR')")
