@@ -31,7 +31,7 @@ import { ALL_ROLES, RoleName, UserResponse } from '../../../core/models/user.mod
     <div class="page">
       <a class="muted back" routerLink="/admin"><mat-icon>arrow_back</mat-icon> Administration</a>
       <h1 class="page-title">System users</h1>
-      <p class="page-subtitle">Search accounts, create new ones, manage roles and active status.</p>
+      <p class="page-subtitle">Search accounts, create new ones, manage roles, active status, and passwords.</p>
 
       <div class="toolbar">
         <mat-form-field appearance="outline" class="search-field">
@@ -102,6 +102,41 @@ import { ALL_ROLES, RoleName, UserResponse } from '../../../core/models/user.mod
         </mat-card>
       }
 
+      @if (resetTarget(); as ru) {
+        <mat-card class="surface-card form-card reset-card">
+          @if (resetRevealed(); as revealed) {
+            <h3>Password reset — {{ ru.fullName || ru.username }}</h3>
+            <p class="muted small">Share this password with the user directly — there is no automatic email delivery. They should change it after signing in.</p>
+            <div class="pwd-reveal">
+              <code>{{ revealed }}</code>
+              <button mat-icon-button (click)="copyPassword(revealed)" matTooltip="Copy to clipboard">
+                <mat-icon>content_copy</mat-icon>
+              </button>
+            </div>
+            <button mat-flat-button color="primary" (click)="closeReset()">Done</button>
+          } @else {
+            <h3>Reset password — {{ ru.fullName || ru.username }}</h3>
+            <p class="muted small">Set a new temporary password for this account. It replaces their current password immediately.</p>
+            <div class="pwd-edit">
+              <mat-form-field appearance="outline" class="pwd-field">
+                <mat-label>New temporary password</mat-label>
+                <input matInput [(ngModel)]="resetDraft" [ngModelOptions]="{ standalone: true }" />
+                <mat-hint>At least 8 characters.</mat-hint>
+              </mat-form-field>
+              <button mat-icon-button type="button" (click)="regenerate()" matTooltip="Generate a new one">
+                <mat-icon>casino</mat-icon>
+              </button>
+            </div>
+            @if (resetError()) { <p class="msg bad"><mat-icon>error</mat-icon> {{ resetError() }}</p> }
+            <div class="row">
+              <button mat-flat-button color="primary" (click)="confirmReset(ru)"
+                      [disabled]="resetDraft.length < 8 || resetBusy()">Set new password</button>
+              <button mat-button (click)="closeReset()">Cancel</button>
+            </div>
+          }
+        </mat-card>
+      }
+
       @if (loading()) {
         <div class="center"><mat-spinner diameter="36" /></div>
       } @else if (users().length === 0) {
@@ -112,6 +147,7 @@ import { ALL_ROLES, RoleName, UserResponse } from '../../../core/models/user.mod
             <span class="c-user">User</span>
             <span class="c-roles">Roles</span>
             <span class="c-active">Active</span>
+            <span class="c-pwd">Password</span>
           </div>
           @for (u of users(); track u.uuid) {
             <div class="urow">
@@ -143,6 +179,11 @@ import { ALL_ROLES, RoleName, UserResponse } from '../../../core/models/user.mod
                                     (change)="toggleActive(u, $event.checked)"></mat-slide-toggle>
                 </span>
               </div>
+              <div class="c-pwd">
+                <button mat-icon-button (click)="startReset(u)" matTooltip="Reset password">
+                  <mat-icon>key</mat-icon>
+                </button>
+              </div>
             </div>
           }
           <mat-paginator [length]="total()" [pageSize]="pageSize" [pageIndex]="pageIndex()"
@@ -160,20 +201,26 @@ import { ALL_ROLES, RoleName, UserResponse } from '../../../core/models/user.mod
     .form-card { padding: 20px 22px; margin-bottom: 20px; }
     .full-width { width: 100%; }
     .two { display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px; }
+    .small { font-size: 0.85rem; }
     .msg { display: flex; align-items: center; gap: 6px; font-size: 0.9rem; }
     .msg.bad { color: #a33; }
     .msg mat-icon { font-size: 18px; height: 18px; width: 18px; }
     .table-card { padding: 6px 8px; }
-    .urow { display: grid; grid-template-columns: 2fr 3fr 80px; gap: 14px; align-items: center; padding: 14px 12px; border-bottom: 1px solid var(--teltp-line); }
+    .urow { display: grid; grid-template-columns: 2fr 3fr 80px 90px; gap: 14px; align-items: center; padding: 14px 12px; border-bottom: 1px solid var(--teltp-line); }
     .urow:last-child { border-bottom: none; }
     .urow.head { font-weight: 700; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--teltp-muted); padding: 8px 12px; }
     .c-user { display: flex; flex-direction: column; }
     .c-user .muted { font-size: 0.85rem; }
     .you { margin-left: 6px; font-size: 0.66rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--teltp-brand); background: rgba(26,77,152,0.10); padding: 1px 6px; border-radius: 999px; vertical-align: middle; }
     .c-roles { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .c-pwd { display: flex; justify-content: center; }
     .chips { display: flex; gap: 6px; flex-wrap: wrap; }
     .role-select { min-width: 240px; }
     .edit-actions { display: flex; gap: 6px; }
+    .reset-card .pwd-edit { display: flex; align-items: center; gap: 8px; }
+    .reset-card .pwd-field { flex: 1; max-width: 320px; }
+    .pwd-reveal { display: flex; align-items: center; gap: 10px; margin: 10px 0 16px; }
+    .pwd-reveal code { font-size: 1.15rem; font-weight: 700; letter-spacing: 0.06em; background: rgba(26,77,152,0.08); color: var(--teltp-brand); padding: 8px 16px; border-radius: 8px; }
     @media (max-width: 720px) { .urow { grid-template-columns: 1fr; gap: 8px; } .urow.head { display: none; } .two { grid-template-columns: 1fr; } }
   `],
 })
@@ -210,6 +257,12 @@ export class SystemUsersComponent {
     roles: [['STUDENT'] as RoleName[]],
     dataProcessingConsent: [false, Validators.requiredTrue],
   });
+
+  readonly resetTarget = signal<UserResponse | null>(null);
+  readonly resetBusy = signal(false);
+  readonly resetError = signal<string | null>(null);
+  readonly resetRevealed = signal<string | null>(null);
+  resetDraft = '';
 
   constructor() { this.load(); }
 
@@ -300,6 +353,51 @@ export class SystemUsersComponent {
         this.load(); // revert toggle to server truth
       },
     });
+  }
+
+  startReset(u: UserResponse): void {
+    this.resetTarget.set(u);
+    this.resetRevealed.set(null);
+    this.resetError.set(null);
+    this.resetDraft = this.generatePassword();
+  }
+
+  closeReset(): void {
+    this.resetTarget.set(null);
+    this.resetRevealed.set(null);
+    this.resetDraft = '';
+  }
+
+  regenerate(): void { this.resetDraft = this.generatePassword(); }
+
+  private generatePassword(): string {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
+    let out = '';
+    for (let i = 0; i < 12; i++) out += chars[Math.floor(Math.random() * chars.length)];
+    return out;
+  }
+
+  confirmReset(u: UserResponse): void {
+    if (this.resetDraft.length < 8) return;
+    this.resetError.set(null);
+    this.resetBusy.set(true);
+    this.userApi.resetPassword(u.uuid, { newPassword: this.resetDraft }).subscribe({
+      next: () => {
+        this.resetBusy.set(false);
+        this.resetRevealed.set(this.resetDraft);
+      },
+      error: (e) => {
+        this.resetBusy.set(false);
+        this.resetError.set(e?.error?.message || 'Could not reset password.');
+      },
+    });
+  }
+
+  copyPassword(pwd: string): void {
+    navigator.clipboard?.writeText(pwd).then(
+      () => this.snack.open('Password copied.', 'Dismiss', { duration: 2000 }),
+      () => this.snack.open('Could not copy — select and copy manually.', 'Dismiss', { duration: 3000 }),
+    );
   }
 
   pretty(r: string): string {

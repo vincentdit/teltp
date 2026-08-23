@@ -59,6 +59,13 @@ public class UserController {
         return ApiResponse.ok(users.setActive(uuid, active));
     }
 
+    @PostMapping("/{uuid}/reset-password")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<UserResponse> resetPassword(@PathVariable String uuid,
+                                                    @Valid @RequestBody ResetPasswordRequest req) {
+        return ApiResponse.ok("Password reset", auth.resetPassword(uuid, req.newPassword()));
+    }
+
     /** True when the given user uuid is the currently authenticated user. */
     private boolean isSelf(String targetUuid, Authentication authentication) {
         if (authentication == null || targetUuid == null) return false;

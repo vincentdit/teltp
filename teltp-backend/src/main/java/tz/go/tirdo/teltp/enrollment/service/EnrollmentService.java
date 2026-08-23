@@ -3,6 +3,11 @@ package tz.go.tirdo.teltp.enrollment.service;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import tz.go.tirdo.teltp.billing.dto.BillingDtos.CreateInvoiceRequest;
+import tz.go.tirdo.teltp.billing.dto.BillingDtos.LineItemRequest;
+import tz.go.tirdo.teltp.billing.entity.PricingPlan;
+import tz.go.tirdo.teltp.billing.repository.PricingPlanRepository;
+import tz.go.tirdo.teltp.billing.service.BillingService;
 import tz.go.tirdo.teltp.catalog.entity.Course;
 import tz.go.tirdo.teltp.catalog.entity.CourseStatus;
 import tz.go.tirdo.teltp.catalog.service.CourseService;
@@ -25,11 +30,16 @@ public class EnrollmentService {
     private final EnrollmentRepository enrollments;
     private final CohortRepository cohorts;
     private final CourseService courseService;
+    private final BillingService billing;
+    private final PricingPlanRepository pricingPlans;
 
-    public EnrollmentService(EnrollmentRepository enrollments, CohortRepository cohorts, CourseService courseService) {
+    public EnrollmentService(EnrollmentRepository enrollments, CohortRepository cohorts, CourseService courseService,
+                             BillingService billing, PricingPlanRepository pricingPlans) {
         this.enrollments = enrollments;
         this.cohorts = cohorts;
         this.courseService = courseService;
+        this.billing = billing;
+        this.pricingPlans = pricingPlans;
     }
 
     @Transactional(readOnly = true)
@@ -58,7 +68,21 @@ public class EnrollmentService {
 
         EnrollmentStatus initial = resolveInitialStatus(course, req.cohortUuid());
         Enrollment e = buildEnrollment(req.courseUuid(), studentUuid, req.cohortUuid(), null, initial);
-        return toResponse(enrollments.save(e));
+        Enrollment saved = enrollments.save(e);
+
+        if (initial == EnrollmentStatus.PENDING_PAYMENT) {
+            createInvoiceForEnrolment(course, studentUuid);
+        }
+        return toResponse(saved);
+    }
+
+    /** Issues the invoice a learner pays to activate a paid-course enrolment. */
+    private void createInvoiceForEnrolment(Course course, String studentUuid) {
+        PricingPlan plan = pricingPlans.findByUuid(course.getPricingPlanUuid())
+                .orElseThrow(() -> new ResourceNotFoundException("PricingPlan", course.getPricingPlanUuid()));
+        LineItemRequest item = new LineItemRequest(course.getTitle(), "COURSE", course.getUuid(),
+                1, plan.getPrice().amount());
+        billing.createInvoice(new CreateInvoiceRequest(studentUuid, "USER", java.util.List.of(item)));
     }
 
     /** Admin/org-admin bulk assignment for a corporate cohort. */

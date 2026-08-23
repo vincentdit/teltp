@@ -12,6 +12,8 @@ import tz.go.tirdo.teltp.common.PageResponse;
 import tz.go.tirdo.teltp.common.ReferenceNumberGenerator;
 import tz.go.tirdo.teltp.common.exception.BusinessRuleException;
 import tz.go.tirdo.teltp.common.exception.ResourceNotFoundException;
+import tz.go.tirdo.teltp.enrollment.entity.EnrollmentStatus;
+import tz.go.tirdo.teltp.enrollment.repository.EnrollmentRepository;
 import tz.go.tirdo.teltp.integration.payment.PaymentInitiation;
 import tz.go.tirdo.teltp.integration.payment.PaymentInitiationResult;
 import tz.go.tirdo.teltp.integration.payment.PaymentMethodRegistry;
@@ -25,13 +27,16 @@ public class BillingService {
     private final PaymentRepository payments;
     private final PaymentMethodRegistry paymentMethods;
     private final ReferenceNumberGenerator refGen;
+    private final EnrollmentRepository enrollments;
 
     public BillingService(InvoiceRepository invoices, PaymentRepository payments,
-                          PaymentMethodRegistry paymentMethods, ReferenceNumberGenerator refGen) {
+                          PaymentMethodRegistry paymentMethods, ReferenceNumberGenerator refGen,
+                          EnrollmentRepository enrollments) {
         this.invoices = invoices;
         this.payments = payments;
         this.paymentMethods = paymentMethods;
         this.refGen = refGen;
+        this.enrollments = enrollments;
     }
 
     @Transactional
@@ -100,9 +105,57 @@ public class BillingService {
         payment.setConfirmedAt(Instant.now());
         payments.save(payment);
 
-        Invoice inv = requireInvoice(payment.getInvoiceUuid());
-        inv.setStatus(InvoiceStatus.PAID);
-        invoices.save(inv);
+        markInvoicePaid(payment.getInvoiceUuid());
+    }
+
+    /**
+     * Operator reconciliation path: confirm a specific invoice directly by uuid rather than by
+     * a payment's control number. Used by the admin billing screen — the control number a stub
+     * channel returns isn't always something an operator has on hand (e.g. mobile money), so this
+     * confirms whichever payment(s) exist for the invoice instead. Idempotent.
+     */
+    @Transactional
+    public void confirmByInvoiceUuid(String invoiceUuid, String providerReference) {
+        Invoice inv = requireInvoice(invoiceUuid);
+        if (inv.getStatus() == InvoiceStatus.PAID) return;
+
+        payments.findByInvoiceUuid(invoiceUuid).stream()
+                .filter(p -> p.getStatus() != PaymentStatus.CONFIRMED)
+                .forEach(p -> {
+                    p.setStatus(PaymentStatus.CONFIRMED);
+                    p.setProviderReference(providerReference);
+                    p.setConfirmedAt(Instant.now());
+                    payments.save(p);
+                });
+
+        markInvoicePaid(invoiceUuid);
+    }
+
+    private void markInvoicePaid(String invoiceUuid) {
+        Invoice inv = requireInvoice(invoiceUuid);
+        if (inv.getStatus() != InvoiceStatus.PAID) {
+            inv.setStatus(InvoiceStatus.PAID);
+            invoices.save(inv);
+        }
+        activateEnrolmentsForInvoice(inv);
+    }
+
+    /**
+     * A paid invoice for a course line item activates the matching PENDING_PAYMENT enrolment.
+     * Deliberately narrow: only touches enrolments that are still awaiting exactly this payment,
+     * so it can never resurrect a cancelled or already-active enrolment.
+     */
+    private void activateEnrolmentsForInvoice(Invoice inv) {
+        if (!"USER".equals(inv.getPayerType())) return;
+        for (InvoiceLineItem li : inv.getLineItems()) {
+            if (!"COURSE".equals(li.getItemType()) || li.getItemUuid() == null) continue;
+            enrollments.findByCourseUuidAndStudentUuidAndStatus(li.getItemUuid(), inv.getPayerUuid(),
+                            EnrollmentStatus.PENDING_PAYMENT)
+                    .ifPresent(e -> {
+                        e.setStatus(EnrollmentStatus.ACTIVE);
+                        enrollments.save(e);
+                    });
+        }
     }
 
     @Transactional(readOnly = true)

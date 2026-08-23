@@ -19,4 +19,8 @@ export class BillingService {
   initiatePayment(req: InitiatePaymentRequest): Observable<PaymentResponse> {
     return this.api.post<PaymentResponse>('/billing/payments/initiate', req);
   }
+
+  confirmInvoice(uuid: string): Observable<InvoiceResponse> {
+    return this.api.post<InvoiceResponse>(`/billing/invoices/${uuid}/confirm`, {});
+  }
 }

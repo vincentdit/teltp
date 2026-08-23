@@ -10,6 +10,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { ApiService } from '../../../core/services/api.service';
+import { BillingService } from '../../../core/services/billing.service';
 import { PageResponse } from '../../../core/models/api-response.model';
 import { InvoiceResponse } from '../../../core/models/billing.model';
 
@@ -63,7 +64,7 @@ import { InvoiceResponse } from '../../../core/models/billing.model';
       @if (!searched()) {
         <div class="hint surface-card">
           <mat-icon>info</mat-icon>
-          <p>Search by a learner's UUID (from System Users) or invoice reference number to view and manage invoices. GePG payments are confirmed automatically via the callback webhook.</p>
+          <p>Search by a learner's UUID (from System Users) or invoice reference number to view and manage invoices. GePG payments are confirmed automatically via the callback webhook; "Mark paid" is for manual reconciliation of mobile money or bank transfers and activates the learner's enrolment immediately.</p>
         </div>
       }
     </div>
@@ -91,6 +92,7 @@ import { InvoiceResponse } from '../../../core/models/billing.model';
 })
 export class BillingAdminComponent {
   private readonly api = inject(ApiService);
+  private readonly billingApi = inject(BillingService);
   private readonly snack = inject(MatSnackBar);
 
   readonly loading = signal(false);
@@ -111,15 +113,10 @@ export class BillingAdminComponent {
   }
 
   confirmManual(inv: InvoiceResponse): void {
-    // Manual confirmation via the GePG callback endpoint (operator reconciliation)
-    this.api.post<string>('/billing/gepg/callback', {
-      controlNumber: inv.referenceNumber,
-      providerReference: 'MANUAL',
-      paidAmount: inv.total,
-    }).subscribe({
-      next: () => {
-        this.invoices.update((list) => list.map((i) => i.uuid === inv.uuid ? { ...i, status: 'PAID' as never } : i));
-        this.snack.open('Invoice marked as paid.', 'Dismiss', { duration: 3000 });
+    this.billingApi.confirmInvoice(inv.uuid).subscribe({
+      next: (updated) => {
+        this.invoices.update((list) => list.map((i) => i.uuid === inv.uuid ? updated : i));
+        this.snack.open('Invoice confirmed — enrolment activated.', 'Dismiss', { duration: 3000 });
       },
       error: (e) => this.snack.open(e?.error?.message || 'Could not confirm.', 'Dismiss', { duration: 4000 }),
     });

@@ -43,4 +43,6 @@ public final class AuthDtos {
             Set<String> roles) {}
 
     public record AssignRolesRequest(@NotBlank String userUuid, Set<String> roles) {}
+
+    public record ResetPasswordRequest(@NotBlank @Size(min = 8) String newPassword) {}
 }

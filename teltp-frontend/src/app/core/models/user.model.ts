@@ -28,3 +28,7 @@ export interface CreateUserRequest {
   profession?: string;
   dataProcessingConsent: boolean;
 }
+
+export interface ResetPasswordRequest {
+  newPassword: string;
+}

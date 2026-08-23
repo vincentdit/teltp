@@ -12,6 +12,7 @@ import java.util.Optional;
 public interface EnrollmentRepository extends JpaRepository<Enrollment, Long> {
     Optional<Enrollment> findByUuid(String uuid);
     Optional<Enrollment> findByCourseUuidAndStudentUuidAndCohortUuid(String courseUuid, String studentUuid, String cohortUuid);
+    Optional<Enrollment> findByCourseUuidAndStudentUuidAndStatus(String courseUuid, String studentUuid, EnrollmentStatus status);
     Page<Enrollment> findByStudentUuid(String studentUuid, Pageable pageable);
     List<Enrollment> findByCourseUuidAndStatus(String courseUuid, EnrollmentStatus status);
     long countByCohortUuidAndStatus(String cohortUuid, EnrollmentStatus status);

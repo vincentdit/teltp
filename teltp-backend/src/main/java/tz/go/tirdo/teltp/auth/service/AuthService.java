@@ -97,6 +97,19 @@ public class AuthService {
         return mapper.toResponse(users.save(user));
     }
 
+    /**
+     * Admin-initiated password reset. There is no email delivery provisioned in v1 (see
+     * EmailNotificationChannel), so the flow is: admin sets a new temporary password here and
+     * shares it with the user out of band — the same pattern already used for account creation.
+     */
+    @Transactional
+    public UserResponse resetPassword(String userUuid, String newPassword) {
+        User user = users.findByUuid(userUuid)
+                .orElseThrow(() -> new ResourceNotFoundException("User", userUuid));
+        user.setPasswordHash(encoder.encode(newPassword));
+        return mapper.toResponse(users.save(user));
+    }
+
     private TokenResponse issueTokens(User user) {
         List<String> roleNames = user.getRoles().stream().map(r -> r.getName().name()).toList();
         String access = jwt.generateAccessToken(user.getUsername(), roleNames);

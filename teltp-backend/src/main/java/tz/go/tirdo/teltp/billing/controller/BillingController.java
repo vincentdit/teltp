@@ -71,6 +71,13 @@ public class BillingController {
         return ApiResponse.ok(billing.invoicesForPayer(payerUuid, pageable));
     }
 
+    @PostMapping("/invoices/{uuid}/confirm")
+    @PreAuthorize("hasAnyRole('ADMIN','FINANCE_OFFICER')")
+    public ApiResponse<InvoiceResponse> confirmInvoice(@PathVariable String uuid) {
+        billing.confirmByInvoiceUuid(uuid, "MANUAL");
+        return ApiResponse.ok("Invoice confirmed", billing.getInvoice(uuid));
+    }
+
     // --- payments ---
     @PostMapping("/payments/initiate")
     @PreAuthorize("isAuthenticated()")

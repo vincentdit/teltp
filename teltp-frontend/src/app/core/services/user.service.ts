@@ -3,7 +3,7 @@ import { Observable, switchMap } from 'rxjs';
 import { ApiService } from './api.service';
 import { PageResponse } from '../models/api-response.model';
 import {
-  AssignRolesRequest, CreateUserRequest, RoleName, UserResponse,
+  AssignRolesRequest, CreateUserRequest, ResetPasswordRequest, RoleName, UserResponse,
 } from '../models/user.model';
 
 @Injectable({ providedIn: 'root' })
@@ -22,6 +22,10 @@ export class UserService {
 
   setActive(uuid: string, active: boolean): Observable<UserResponse> {
     return this.api.patch<UserResponse>(`/users/${uuid}/active?active=${active}`, {});
+  }
+
+  resetPassword(uuid: string, req: ResetPasswordRequest): Observable<UserResponse> {
+    return this.api.post<UserResponse>(`/users/${uuid}/reset-password`, req);
   }
 
   /**
