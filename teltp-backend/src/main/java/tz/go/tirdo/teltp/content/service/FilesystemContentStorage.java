@@ -17,10 +17,14 @@ public class FilesystemContentStorage implements ContentStorage {
     @Override
     public String store(String suggestedName, byte[] data, String mimeType) {
         try {
-            Path dir = Path.of(basePath);
+            Path dir = Path.of(basePath).toAbsolutePath().normalize();
             Files.createDirectories(dir);
-            String key = UUID.randomUUID() + "-" + suggestedName.replaceAll("[^a-zA-Z0-9._-]", "_");
-            Files.write(dir.resolve(key), data, StandardOpenOption.CREATE_NEW);
+            String safe = suggestedName.replaceAll("[^a-zA-Z0-9._-]", "_");
+            if (safe.isBlank() || safe.equals(".") || safe.equals("..")) safe = "file";
+            String key = UUID.randomUUID() + "-" + safe;
+            Path target = dir.resolve(key).normalize();
+            if (!target.startsWith(dir)) throw new BusinessRuleException("Invalid storage name");
+            Files.write(target, data, StandardOpenOption.CREATE_NEW);
             return key;
         } catch (IOException e) {
             throw new BusinessRuleException("Failed to store content: " + e.getMessage());
@@ -30,7 +34,10 @@ public class FilesystemContentStorage implements ContentStorage {
     @Override
     public byte[] retrieve(String storageKey) {
         try {
-            return Files.readAllBytes(Path.of(basePath).resolve(storageKey));
+            Path base = Path.of(basePath).toAbsolutePath().normalize();
+            Path target = base.resolve(storageKey).normalize();
+            if (!target.startsWith(base)) throw new BusinessRuleException("Invalid storage key");
+            return Files.readAllBytes(target);
         } catch (IOException e) {
             throw new BusinessRuleException("Failed to read content: " + e.getMessage());
         }
@@ -39,7 +46,10 @@ public class FilesystemContentStorage implements ContentStorage {
     @Override
     public void delete(String storageKey) {
         try {
-            Files.deleteIfExists(Path.of(basePath).resolve(storageKey));
+            Path base = Path.of(basePath).toAbsolutePath().normalize();
+            Path target = base.resolve(storageKey).normalize();
+            if (!target.startsWith(base)) throw new BusinessRuleException("Invalid storage key");
+            Files.deleteIfExists(target);
         } catch (IOException e) {
             throw new BusinessRuleException("Failed to delete content: " + e.getMessage());
         }

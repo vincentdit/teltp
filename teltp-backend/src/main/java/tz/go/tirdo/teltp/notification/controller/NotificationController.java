@@ -37,7 +37,7 @@ public class NotificationController {
     @PostMapping("/{uuid}/read")
     @PreAuthorize("isAuthenticated()")
     public ApiResponse<Void> markRead(@PathVariable String uuid) {
-        service.markRead(uuid);
+        service.markRead(uuid, me());
         return ApiResponse.ok("Marked read", null);
     }
 

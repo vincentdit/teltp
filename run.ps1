@@ -10,6 +10,7 @@
     logs         Follow logs from all services
     logs backend Follow logs from one service (backend | frontend | db)
     status       Show container status
+    backup       Write a MySQL dump to .\backups
     admin <user> Grant the ADMIN role to an existing username (log out/in after)
     help         Show this help
 #>
@@ -70,6 +71,17 @@ switch ($Command.ToLower()) {
     if ($Arg) { docker compose logs -f $Arg } else { docker compose logs -f }
   }
   "status" { docker compose ps }
+  "backup" {
+    Assert-Docker
+    $dir = Join-Path $PSScriptRoot "backups"
+    New-Item -ItemType Directory -Force -Path $dir | Out-Null
+    $file = Join-Path $dir ("teltp-" + (Get-Date -Format "yyyyMMdd-HHmmss") + ".sql")
+    $u  = Get-EnvValue "DB_USER" "teltp"
+    $p  = Get-EnvValue "DB_PASSWORD" "teltp"
+    $db = Get-EnvValue "DB_NAME" "teltp"
+    docker compose exec -T db mysqldump -u$u -p$p $db | Set-Content -Encoding utf8 $file
+    Write-Host "Wrote $file" -ForegroundColor Green
+  }
   "admin" {
     if (-not $Arg) { Write-Host "Usage: .\run.ps1 admin <username>" -ForegroundColor Yellow; break }
     Assert-Docker
@@ -89,6 +101,7 @@ switch ($Command.ToLower()) {
     Write-Host "  .\run.ps1 reset          Stop + delete all data"
     Write-Host "  .\run.ps1 logs [svc]     Follow logs (svc = backend|frontend|db)"
     Write-Host "  .\run.ps1 status         Container status"
+    Write-Host "  .\run.ps1 backup         Dump the database to .\backups"
     Write-Host "  .\run.ps1 admin <user>   Grant ADMIN to a username"
   }
 }

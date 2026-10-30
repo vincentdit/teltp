@@ -51,7 +51,8 @@ class CertificationServiceTest {
         courses = mock(CourseService.class);
         users = mock(UserService.class);
         refGen = mock(ReferenceNumberGenerator.class);
-        service = new CertificationService(certificates, pdfGenerator, storage, progress, courses, users, refGen);
+        service = new CertificationService(certificates, pdfGenerator, storage, progress, courses, users, refGen,
+                mock(tz.go.tirdo.teltp.audit.service.AuditService.class));
         ReflectionTestUtils.setField(service, "autoIssueEnabled", true);
         ReflectionTestUtils.setField(service, "defaultAccreditingBody", "");
     }

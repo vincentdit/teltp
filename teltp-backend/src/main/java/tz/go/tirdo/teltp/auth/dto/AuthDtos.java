@@ -17,20 +17,42 @@ public final class AuthDtos {
     public record RegisterRequest(
             @NotBlank @Size(max = 100) String username,
             @NotBlank @Email String email,
-            @NotBlank @Size(min = 8) String password,
+            @NotBlank @Size(min = 10, max = 200) String password,
             String firstName,
             String lastName,
             String phoneNumber,
             String profession,
             boolean dataProcessingConsent) {}
 
-    public record RefreshRequest(@NotBlank String refreshToken) {}
+    public record RefreshRequest(String refreshToken) {}
 
+    public record ForgotPasswordRequest(@NotBlank @Email String email) {}
+
+    public record CompleteResetRequest(
+            @NotBlank String token,
+            @NotBlank @Size(min = 10, max = 200) String newPassword) {}
+
+    public record MfaVerifyRequest(@NotBlank String challenge, @NotBlank String code) {}
+
+    public record MfaCodeRequest(@NotBlank String code) {}
+
+    public record MfaSetupResponse(String secret, String otpauthUri) {}
+
+    public record NidaSubmitRequest(@NotBlank @Size(max = 40) String nationalId) {}
+
+    /**
+     * When {@code mfaRequired} is true, the access and refresh tokens are empty and
+     * {@code mfaChallenge} must be sent to /auth/mfa/verify with a TOTP code.
+     * The refresh token is also set as an HttpOnly cookie and is omitted from JSON
+     * by the controller.
+     */
     public record TokenResponse(
             String accessToken,
             String refreshToken,
             String tokenType,
-            long expiresIn) {}
+            long expiresIn,
+            boolean mfaRequired,
+            String mfaChallenge) {}
 
     public record UserResponse(
             String uuid,
@@ -44,5 +66,5 @@ public final class AuthDtos {
 
     public record AssignRolesRequest(@NotBlank String userUuid, Set<String> roles) {}
 
-    public record ResetPasswordRequest(@NotBlank @Size(min = 8) String newPassword) {}
+    public record ResetPasswordRequest(@NotBlank @Size(min = 10, max = 200) String newPassword) {}
 }

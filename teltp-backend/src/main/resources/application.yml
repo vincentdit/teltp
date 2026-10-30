@@ -23,6 +23,10 @@ spring:
     port: ${MAIL_PORT:1025}
     username: ${MAIL_USER:}
     password: ${MAIL_PASSWORD:}
+  servlet:
+    multipart:
+      max-file-size: 25MB
+      max-request-size: 26MB
 
 server:
   port: ${SERVER_PORT:8080}
@@ -36,18 +40,22 @@ teltp:
       access-token-validity-seconds: 3600
       refresh-token-validity-seconds: 2592000
     mfa:
-      enabled: false            # MFA seam present; TOTP/OTP not built in v1
+      enabled: true             # users may enroll a TOTP authenticator; login asks only after they confirm
+    cors-origins: ${CORS_ORIGINS:http://localhost:9090,http://localhost:4200}
+    public-base-url: ${PUBLIC_BASE_URL:http://localhost:9090}
   integration:
     gepg:
-      enabled: false            # stub; flip on when SP code + certs provisioned
+      enabled: false            # live bill submission needs an SP code; the callback still requires a signature
       sp-code: ${GEPG_SP_CODE:}
       callback-path: /billing/gepg/callback
+      callback-secret: ${GEPG_CALLBACK_SECRET:}
     mobile-money:
       enabled: false
     bank-transfer:
       enabled: false
     nida:
-      enabled: false            # National ID verification seam
+      enabled: false
+      endpoint: ${NIDA_ENDPOINT:}
     notification:
       email:
         enabled: false
@@ -55,6 +63,7 @@ teltp:
       sms:
         enabled: false
         sender-id: TIRDO
+        gateway-url: ${SMS_GATEWAY_URL:}
     meeting:
       default-provider: MANUAL  # MANUAL | ZOOM | TEAMS | JITSI
   content:
@@ -67,6 +76,20 @@ teltp:
 springdoc:
   swagger-ui:
     path: /swagger-ui.html
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+  health:
+    # Local and CI stacks have no SMTP server. Probe mail only when sending is on.
+    mail:
+      enabled: ${teltp.integration.notification.email.enabled:false}
 
 logging:
   level:

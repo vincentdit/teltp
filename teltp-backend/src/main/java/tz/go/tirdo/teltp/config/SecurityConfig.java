@@ -24,18 +24,22 @@ import java.util.List;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtFilter;
+    private final TeltpProperties properties;
 
-    public SecurityConfig(JwtAuthenticationFilter jwtFilter) {
+    public SecurityConfig(JwtAuthenticationFilter jwtFilter, TeltpProperties properties) {
         this.jwtFilter = jwtFilter;
+        this.properties = properties;
     }
 
     /** Public, unauthenticated endpoints. GePG callback + certificate verification mirror CIAP whitelisting. */
     private static final String[] PUBLIC = {
-            "/auth/login", "/auth/register", "/auth/refresh",
+            "/auth/login", "/auth/register", "/auth/refresh", "/auth/logout",
+            "/auth/forgot-password", "/auth/reset-password", "/auth/mfa/verify",
             "/billing/gepg/callback",
             "/certification/verify/**",
+            "/certification/badges/**",
             "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html",
-            "/actuator/health"
+            "/actuator/health", "/actuator/health/**"
     };
 
     @Bean
@@ -64,7 +68,10 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration cfg = new CorsConfiguration();
-        cfg.setAllowedOriginPatterns(List.of("*"));
+        String configured = properties.getSecurity().getCorsOrigins();
+        java.util.List<String> origins = java.util.Arrays.stream(configured.split(","))
+                .map(String::trim).filter(s -> !s.isEmpty()).toList();
+        cfg.setAllowedOrigins(origins.isEmpty() ? List.of("http://localhost:9090") : origins);
         cfg.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         cfg.setAllowedHeaders(List.of("*"));
         cfg.setExposedHeaders(List.of("Authorization"));

@@ -60,9 +60,12 @@ public class NotificationService {
     }
 
     @Transactional
-    public void markRead(String uuid) {
+    public void markRead(String uuid, String recipientUuid) {
         Notification n = notifications.findByUuid(uuid)
                 .orElseThrow(() -> new ResourceNotFoundException("Notification", uuid));
+        if (!recipientUuid.equals(n.getRecipientUuid())) {
+            throw new org.springframework.security.access.AccessDeniedException("Access denied");
+        }
         n.setRead(true);
         notifications.save(n);
     }

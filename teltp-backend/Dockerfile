@@ -10,9 +10,18 @@ RUN mvn -q -B -DskipTests dependency:go-offline
 COPY src ./src
 RUN mvn -B -DskipTests clean package
 
-# ---- run stage: slim JRE ----
+# ---- run stage: slim JRE, non-root, health check ----
 FROM eclipse-temurin:21-jre
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && useradd --uid 1001 --create-home teltp \
+    && mkdir -p /var/teltp/content \
+    && chown -R teltp:teltp /var/teltp
 WORKDIR /app
-COPY --from=build /app/target/teltp-backend-1.0.0.jar app.jar
+COPY --from=build --chown=teltp:teltp /app/target/teltp-backend-1.0.0.jar app.jar
+USER teltp
 EXPOSE 8080
+HEALTHCHECK --interval=15s --timeout=5s --start-period=90s --retries=20 \
+  CMD curl -fsS http://127.0.0.1:8080/api/actuator/health || exit 1
 ENTRYPOINT ["java", "-jar", "/app/app.jar"]

@@ -55,7 +55,7 @@ import { AuthService } from '../../../core/services/auth.service';
             <mat-label>Password</mat-label>
             <input matInput type="password" formControlName="password" autocomplete="new-password" />
             @if (form.controls.password.hasError('minlength')) {
-              <mat-error>At least 8 characters</mat-error>
+              <mat-error>Use at least 10 characters, with a letter and a digit.</mat-error>
             }
           </mat-form-field>
 
@@ -94,7 +94,7 @@ export class RegisterComponent {
     username: ['', Validators.required],
     email: ['', [Validators.required, Validators.email]],
     profession: [''],
-    password: ['', [Validators.required, Validators.minLength(8)]],
+    password: ['', [Validators.required, Validators.minLength(10)]],
     dataProcessingConsent: [false, Validators.requiredTrue],
   });
 

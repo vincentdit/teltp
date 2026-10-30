@@ -14,9 +14,11 @@ import tz.go.tirdo.teltp.common.exception.BusinessRuleException;
 import tz.go.tirdo.teltp.common.exception.ResourceNotFoundException;
 import tz.go.tirdo.teltp.enrollment.entity.EnrollmentStatus;
 import tz.go.tirdo.teltp.enrollment.repository.EnrollmentRepository;
+import tz.go.tirdo.teltp.audit.service.AuditService;
 import tz.go.tirdo.teltp.integration.payment.PaymentInitiation;
 import tz.go.tirdo.teltp.integration.payment.PaymentInitiationResult;
 import tz.go.tirdo.teltp.integration.payment.PaymentMethodRegistry;
+import tz.go.tirdo.teltp.security.AccessGuard;
 
 import java.time.Instant;
 
@@ -28,15 +30,19 @@ public class BillingService {
     private final PaymentMethodRegistry paymentMethods;
     private final ReferenceNumberGenerator refGen;
     private final EnrollmentRepository enrollments;
+    private final AuditService audit;
+    private final AccessGuard access;
 
     public BillingService(InvoiceRepository invoices, PaymentRepository payments,
                           PaymentMethodRegistry paymentMethods, ReferenceNumberGenerator refGen,
-                          EnrollmentRepository enrollments) {
+                          EnrollmentRepository enrollments, AuditService audit, AccessGuard access) {
         this.invoices = invoices;
         this.payments = payments;
         this.paymentMethods = paymentMethods;
         this.refGen = refGen;
         this.enrollments = enrollments;
+        this.audit = audit;
+        this.access = access;
     }
 
     @Transactional
@@ -63,6 +69,7 @@ public class BillingService {
     @Transactional
     public PaymentResponse initiatePayment(InitiatePaymentRequest req) {
         Invoice inv = requireInvoice(req.invoiceUuid());
+        access.assertCanReadInvoice(inv.getPayerUuid(), inv.getPayerType());
         if (inv.getStatus() == InvoiceStatus.PAID)
             throw new BusinessRuleException("Invoice already paid");
         PaymentChannel channel = PaymentChannel.valueOf(req.channel());
@@ -106,6 +113,7 @@ public class BillingService {
         payments.save(payment);
 
         markInvoicePaid(payment.getInvoiceUuid());
+        audit.record("PAYMENT_CONFIRMED", "Payment", payment.getUuid(), controlNumber);
     }
 
     /**
@@ -129,6 +137,7 @@ public class BillingService {
                 });
 
         markInvoicePaid(invoiceUuid);
+        audit.record("INVOICE_CONFIRMED", "Invoice", invoiceUuid, providerReference);
     }
 
     private void markInvoicePaid(String invoiceUuid) {
@@ -160,12 +169,15 @@ public class BillingService {
 
     @Transactional(readOnly = true)
     public PageResponse<InvoiceResponse> invoicesForPayer(String payerUuid, Pageable pageable) {
+        access.assertCanReadInvoice(payerUuid, "USER");
         return PageResponse.from(invoices.findByPayerUuid(payerUuid, pageable), this::toInvoiceResponse);
     }
 
     @Transactional(readOnly = true)
     public InvoiceResponse getInvoice(String uuid) {
-        return toInvoiceResponse(requireInvoice(uuid));
+        Invoice inv = requireInvoice(uuid);
+        access.assertCanReadInvoice(inv.getPayerUuid(), inv.getPayerType());
+        return toInvoiceResponse(inv);
     }
 
     private Invoice requireInvoice(String uuid) {

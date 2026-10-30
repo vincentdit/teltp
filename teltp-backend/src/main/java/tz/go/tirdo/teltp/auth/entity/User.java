@@ -52,6 +52,12 @@ public class User extends BaseEntity {
     /** PDPA consent affordance captured at registration. */
     private boolean dataProcessingConsent = false;
 
+    /** Base32 TOTP secret. Present once the user has started MFA setup. */
+    @Column(length = 64)
+    private String mfaSecret;
+
+    private boolean mfaEnabled = false;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "organization_id")
     private Organization organization;

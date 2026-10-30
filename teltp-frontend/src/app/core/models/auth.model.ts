@@ -15,10 +15,12 @@ export interface RegisterRequest {
 }
 
 export interface TokenResponse {
-  accessToken: string;
-  refreshToken: string;
+  accessToken: string | null;
+  refreshToken: string | null;
   tokenType: string;
   expiresIn: number;
+  mfaRequired?: boolean;
+  mfaChallenge?: string | null;
 }
 
 export interface UserResponse {

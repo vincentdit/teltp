@@ -16,5 +16,5 @@ public final class ContentDtos {
 
     public record MaterialResponse(
             String uuid, String lessonUuid, String title, String type,
-            String storageKey, Long sizeBytes, String mimeType) {}
+            String storageKey, Long sizeBytes, String mimeType, String scormPackageId) {}
 }

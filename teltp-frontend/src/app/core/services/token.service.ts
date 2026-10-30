@@ -2,17 +2,16 @@ import { Injectable, computed, signal } from '@angular/core';
 import { RoleName } from '../models/auth.model';
 
 const ACCESS_KEY = 'teltp.access';
-const REFRESH_KEY = 'teltp.refresh';
 
 interface JwtClaims { sub?: string; roles?: RoleName[]; exp?: number; }
 
 /**
- * Holds the JWT session in localStorage and exposes reactive signals for the
- * current username and roles, decoded from the access token.
+ * Holds the access token in memory. The refresh token is an HttpOnly cookie
+ * set by the API, so page reloads call /auth/refresh rather than reading storage.
  */
 @Injectable({ providedIn: 'root' })
 export class TokenService {
-  private readonly accessToken = signal<string | null>(localStorage.getItem(ACCESS_KEY));
+  private readonly accessToken = signal<string | null>(null);
 
   readonly claims = computed<JwtClaims | null>(() => decode(this.accessToken()));
   readonly isAuthenticated = computed(() => {
@@ -22,19 +21,16 @@ export class TokenService {
   readonly username = computed(() => this.claims()?.sub ?? null);
   readonly roles = computed<RoleName[]>(() => this.claims()?.roles ?? []);
 
-  setTokens(access: string, refresh: string): void {
-    localStorage.setItem(ACCESS_KEY, access);
-    localStorage.setItem(REFRESH_KEY, refresh);
+  setAccess(access: string | null): void {
     this.accessToken.set(access);
+    localStorage.removeItem(ACCESS_KEY);
+    localStorage.removeItem('teltp.refresh');
   }
 
   getAccessToken(): string | null { return this.accessToken(); }
-  getRefreshToken(): string | null { return localStorage.getItem(REFRESH_KEY); }
 
   clear(): void {
-    localStorage.removeItem(ACCESS_KEY);
-    localStorage.removeItem(REFRESH_KEY);
-    this.accessToken.set(null);
+    this.setAccess(null);
   }
 
   hasAnyRole(required: RoleName[]): boolean {

@@ -2,27 +2,32 @@ package tz.go.tirdo.teltp.security;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import tz.go.tirdo.teltp.auth.entity.User;
 
 /**
- * MFA seam. v1 ships disabled (teltp.security.mfa.enabled=false). The login flow
- * consults {@link #isRequired(String)} so a TOTP / SMS-OTP second factor can be
- * added later without restructuring authentication. No factor is implemented yet.
+ * Per-user TOTP. The platform flag only controls whether a user may enroll.
+ * Login asks for a code only when that user has confirmed MFA.
  */
 @Service
 public class MfaService {
 
-    @Value("${teltp.security.mfa.enabled:false}")
-    private boolean enabled;
+    @Value("${teltp.security.mfa.enabled:true}")
+    private boolean enrollmentAllowed;
 
-    public boolean isEnabled() { return enabled; }
+    public boolean enrollmentAllowed() { return enrollmentAllowed; }
 
-    /** Whether the given user must complete a second factor. Always false in v1. */
-    public boolean isRequired(String username) {
-        return enabled;  // future: per-user MFA enrollment lookup
+    public boolean isRequired(User user) {
+        return user.isMfaEnabled() && user.getMfaSecret() != null;
     }
 
-    /** Verify a submitted OTP. Seam only — not implemented in v1. */
-    public boolean verify(String username, String otp) {
-        throw new UnsupportedOperationException("MFA not implemented in v1");
+    public boolean verify(User user, String code) {
+        return Totp.verify(user.getMfaSecret(), code);
+    }
+
+    public String begin(User user) {
+        String secret = Totp.generateSecret();
+        user.setMfaSecret(secret);
+        user.setMfaEnabled(false);
+        return secret;
     }
 }

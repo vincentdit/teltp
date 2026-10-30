@@ -12,8 +12,10 @@ import tz.go.tirdo.teltp.schedule.entity.*;
 import tz.go.tirdo.teltp.schedule.repository.AttendanceRepository;
 import tz.go.tirdo.teltp.schedule.repository.EventRepository;
 import tz.go.tirdo.teltp.schedule.repository.RegistrationRepository;
+import tz.go.tirdo.teltp.integration.meeting.MeetingProvisioner;
 
 import java.time.Instant;
+import java.util.List;
 
 @Service
 public class ScheduleService {
@@ -22,13 +24,16 @@ public class ScheduleService {
     private final RegistrationRepository registrations;
     private final AttendanceRepository attendances;
     private final ReferenceNumberGenerator refGen;
+    private final List<MeetingProvisioner> provisioners;
 
     public ScheduleService(EventRepository events, RegistrationRepository registrations,
-                           AttendanceRepository attendances, ReferenceNumberGenerator refGen) {
+                           AttendanceRepository attendances, ReferenceNumberGenerator refGen,
+                           List<MeetingProvisioner> provisioners) {
         this.events = events;
         this.registrations = registrations;
         this.attendances = attendances;
         this.refGen = refGen;
+        this.provisioners = provisioners;
     }
 
     @Transactional
@@ -49,7 +54,23 @@ public class ScheduleService {
         e.setProvider(req.provider() == null ? MeetingProvider.MANUAL : MeetingProvider.valueOf(req.provider()));
         e.setJoinUrl(req.joinUrl());
         e.setExternalMeetingId(req.externalMeetingId());
+        provisionJoinLink(e);
         return toResponse(events.save(e));
+    }
+
+    private void provisionJoinLink(ScheduledEvent e) {
+        if (e.getJoinUrl() != null && !e.getJoinUrl().isBlank()) return;
+        if (e.getProvider() == MeetingProvider.MANUAL) return;
+        MeetingProvisioner provisioner = provisioners.stream()
+                .filter(p -> p.provider().equals(e.getProvider().name()))
+                .findFirst()
+                .orElseThrow(() -> new BusinessRuleException(
+                        "Paste a join URL. " + e.getProvider() + " is not connected on this server."));
+        MeetingProvisioner.MeetingDetails details = provisioner.provision(e.getTitle(), e.getStartsAt(), e.getEndsAt(), null);
+        if (details.joinUrl() == null)
+            throw new BusinessRuleException("Paste a join URL for " + e.getProvider());
+        e.setJoinUrl(details.joinUrl());
+        e.setExternalMeetingId(details.externalMeetingId());
     }
 
     @Transactional

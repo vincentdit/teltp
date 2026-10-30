@@ -7,6 +7,8 @@ import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 import tz.go.tirdo.teltp.certification.service.CertificationService;
 import tz.go.tirdo.teltp.common.event.CourseCompletionCandidateEvent;
+import tz.go.tirdo.teltp.notification.entity.NotificationType;
+import tz.go.tirdo.teltp.notification.service.NotificationService;
 
 /**
  * Bridges the assessment/progress modules to certification: after a completion-candidate signal
@@ -20,18 +22,24 @@ public class CertificateAutoIssueListener {
     private static final Logger log = LoggerFactory.getLogger(CertificateAutoIssueListener.class);
 
     private final CertificationService certification;
+    private final NotificationService notifications;
 
-    public CertificateAutoIssueListener(CertificationService certification) {
+    public CertificateAutoIssueListener(CertificationService certification, NotificationService notifications) {
         this.certification = certification;
+        this.notifications = notifications;
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onCompletionCandidate(CourseCompletionCandidateEvent event) {
         try {
             certification.issueAutomatic(event.studentUuid(), event.courseUuid())
-                    .ifPresent(cert -> log.info(
+                    .ifPresent(cert -> {
+                        log.info(
                             "Auto-issued certificate {} to student {} for course {} (trigger {})",
-                            cert.referenceNumber(), event.studentUuid(), event.courseUuid(), event.sourceUuid()));
+                            cert.referenceNumber(), event.studentUuid(), event.courseUuid(), event.sourceUuid());
+                        notifications.notify(event.studentUuid(), NotificationType.CERTIFICATE_READY,
+                                "Certificate ready", cert.courseTitle());
+                    });
         } catch (Exception ex) {
             log.warn("Auto-issue skipped for student {} course {}: {}",
                     event.studentUuid(), event.courseUuid(), ex.getMessage());

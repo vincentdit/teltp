@@ -7,10 +7,14 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import tz.go.tirdo.teltp.auth.dto.AuthDtos.*;
 import tz.go.tirdo.teltp.auth.service.AuthService;
+import tz.go.tirdo.teltp.auth.service.PrivacyService;
 import tz.go.tirdo.teltp.auth.service.UserService;
 import tz.go.tirdo.teltp.common.ApiResponse;
 import tz.go.tirdo.teltp.common.PageResponse;
 import tz.go.tirdo.teltp.common.exception.BusinessRuleException;
+import tz.go.tirdo.teltp.security.CurrentUser;
+
+import java.util.Map;
 
 @RestController
 @RequestMapping("/users")
@@ -18,10 +22,12 @@ public class UserController {
 
     private final UserService users;
     private final AuthService auth;
+    private final PrivacyService privacy;
 
-    public UserController(UserService users, AuthService auth) {
+    public UserController(UserService users, AuthService auth, PrivacyService privacy) {
         this.users = users;
         this.auth = auth;
+        this.privacy = privacy;
     }
 
     @GetMapping
@@ -64,6 +70,29 @@ public class UserController {
     public ApiResponse<UserResponse> resetPassword(@PathVariable String uuid,
                                                     @Valid @RequestBody ResetPasswordRequest req) {
         return ApiResponse.ok("Password reset", auth.resetPassword(uuid, req.newPassword()));
+    }
+
+    @GetMapping("/me/export")
+    @PreAuthorize("isAuthenticated()")
+    public ApiResponse<Map<String, Object>> exportMine() {
+        return ApiResponse.ok(privacy.export(CurrentUser.requireUsername()));
+    }
+
+    @PostMapping("/me/erase")
+    @PreAuthorize("isAuthenticated()")
+    public ApiResponse<Void> eraseMine() {
+        privacy.erase(CurrentUser.requireUsername());
+        return ApiResponse.ok("Account erased", null);
+    }
+
+    @PostMapping("/me/nida")
+    @PreAuthorize("isAuthenticated()")
+    public ApiResponse<UserResponse> submitNida(@Valid @RequestBody NidaSubmitRequest req) {
+        UserResponse user = users.recordNida(CurrentUser.requireUsername(), req.nationalId());
+        String message = users.nidaLive()
+                ? "National ID checked with the identity service"
+                : "National ID stored. Live NIDA verification is not configured on this server.";
+        return ApiResponse.ok(message, user);
     }
 
     /** True when the given user uuid is the currently authenticated user. */

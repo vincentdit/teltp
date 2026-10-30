@@ -20,6 +20,7 @@ yarn-error.log*
 # .env holds local dev creds; keep it out of version control.
 .env
 *.env.local
+backups/
 
 # ---- IDE / editor ----
 .idea/

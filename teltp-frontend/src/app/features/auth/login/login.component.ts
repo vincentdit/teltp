@@ -33,11 +33,21 @@ import { AuthService } from '../../../core/services/auth.service';
             <input matInput type="password" formControlName="password" autocomplete="current-password" />
           </mat-form-field>
 
+          @if (mfaChallenge()) {
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Authenticator code</mat-label>
+              <input matInput formControlName="code" inputmode="numeric" autocomplete="one-time-code" />
+            </mat-form-field>
+          }
+
           <button mat-flat-button color="primary" type="submit"
-                  [disabled]="form.invalid || loading()">Sign in</button>
+                  [disabled]="form.invalid || loading()">{{ mfaChallenge() ? 'Verify' : 'Sign in' }}</button>
         </form>
 
-        <p class="muted switch">No account? <a routerLink="/register">Create one</a></p>
+        <p class="muted switch">
+          <a routerLink="/forgot-password">Forgot password?</a>
+          · No account? <a routerLink="/register">Create one</a>
+        </p>
       </mat-card>
     </div>
   `,
@@ -55,19 +65,38 @@ export class LoginComponent {
   private readonly route = inject(ActivatedRoute);
 
   readonly loading = signal(false);
+  readonly mfaChallenge = signal<string | null>(null);
 
   readonly form = this.fb.nonNullable.group({
     username: ['', Validators.required],
     password: ['', Validators.required],
+    code: [''],
   });
 
   submit(): void {
     if (this.form.invalid) return;
     this.loading.set(true);
-    this.auth.login(this.form.getRawValue()).subscribe({
-      next: () => {
-        const redirect = this.route.snapshot.queryParamMap.get('redirect') ?? '/dashboard';
-        this.router.navigateByUrl(redirect);
+    const challenge = this.mfaChallenge();
+    const done = () => {
+      const redirect = this.route.snapshot.queryParamMap.get('redirect') ?? '/dashboard';
+      this.router.navigateByUrl(redirect);
+    };
+    if (challenge) {
+      this.auth.verifyMfa(challenge, this.form.controls.code.value).subscribe({
+        next: done,
+        error: () => this.loading.set(false),
+      });
+      return;
+    }
+    const { username, password } = this.form.getRawValue();
+    this.auth.login({ username, password }).subscribe({
+      next: (t) => {
+        if (t.mfaRequired && t.mfaChallenge) {
+          this.mfaChallenge.set(t.mfaChallenge);
+          this.loading.set(false);
+          return;
+        }
+        done();
       },
       error: () => this.loading.set(false),
     });

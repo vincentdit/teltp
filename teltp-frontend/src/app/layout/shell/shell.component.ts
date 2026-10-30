@@ -6,9 +6,10 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
 import { AuthService } from '../../core/services/auth.service';
 import { TokenService } from '../../core/services/token.service';
+import { I18nKey, I18nService } from '../../core/services/i18n.service';
 import { Router } from '@angular/router';
 
-interface NavItem { label: string; link: string; roles?: string[]; requiresAuth?: boolean; }
+interface NavItem { label: I18nKey; link: string; roles?: string[]; requiresAuth?: boolean; }
 
 @Component({
   selector: 'app-shell',
@@ -24,26 +25,31 @@ export class ShellComponent {
   private readonly auth = inject(AuthService);
   private readonly tokens = inject(TokenService);
   private readonly router = inject(Router);
+  readonly i18n = inject(I18nService);
 
   readonly isAuthenticated = this.auth.isAuthenticated;
   readonly username = this.auth.username;
 
   private readonly allNav: NavItem[] = [
-    { label: 'Catalogue', link: '/catalog' },
-    { label: 'Home', link: '/dashboard', requiresAuth: true },
-    { label: 'My Results', link: '/results', roles: ['STUDENT'] },
-    { label: 'My Certificates', link: '/certificates', roles: ['STUDENT'] },
-    { label: 'Administration', link: '/admin', roles: ['ADMIN', 'INSTRUCTOR'] },
-    { label: 'Reports', link: '/admin/reporting', roles: ['ADMIN', 'FINANCE_OFFICER'] },
+    { label: 'catalogue', link: '/catalog' },
+    { label: 'home', link: '/dashboard', requiresAuth: true },
+    { label: 'results', link: '/results', roles: ['STUDENT'] },
+    { label: 'certificates', link: '/certificates', roles: ['STUDENT'] },
+    { label: 'notifications', link: '/notifications', requiresAuth: true },
+    { label: 'schedule', link: '/schedule', requiresAuth: true },
+    { label: 'forum', link: '/forum', requiresAuth: true },
+    { label: 'administration', link: '/admin', roles: ['ADMIN', 'INSTRUCTOR'] },
+    { label: 'reports', link: '/admin/reporting', roles: ['ADMIN', 'FINANCE_OFFICER'] },
   ];
 
-  readonly nav = computed<NavItem[]>(() =>
-    this.allNav.filter((item) => {
+  readonly nav = computed<NavItem[]>(() => {
+    this.i18n.lang();
+    return this.allNav.filter((item) => {
       if (item.roles) return this.tokens.hasAnyRole(item.roles as never);
       if (item.requiresAuth) return this.isAuthenticated();
       return true;
-    }),
-  );
+    });
+  });
 
   logout(): void {
     this.auth.logout();

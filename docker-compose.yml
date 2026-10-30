@@ -33,6 +33,14 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    volumes:
+      - teltp-content:/var/teltp/content
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/api/actuator/health/liveness"]
+      interval: 15s
+      timeout: 5s
+      retries: 20
+      start_period: 90s
     # No host port published for the backend: the frontend reaches it over the
     # internal Docker network (backend:8080). To hit Swagger/curl from your host,
     # uncomment the mapping below (pick any free host port).
@@ -43,10 +51,12 @@ services:
   frontend:
     build: ./teltp-frontend
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     ports:
       - "9090:80"          # the app you open in the browser
     restart: unless-stopped
 
 volumes:
   teltp-db-data:
+  teltp-content:

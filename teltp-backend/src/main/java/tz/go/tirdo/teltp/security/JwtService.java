@@ -34,6 +34,14 @@ public class JwtService {
         return build(username, Map.of("type", "refresh"), refreshValidity);
     }
 
+    public String generateMfaChallenge(String username) {
+        return build(username, Map.of("type", "mfa"), 300);
+    }
+
+    public long accessTtlSeconds() { return accessValidity; }
+
+    public long refreshTtlSeconds() { return refreshValidity; }
+
     private String build(String subject, Map<String, Object> claims, long validitySeconds) {
         Date now = new Date();
         return Jwts.builder()
@@ -51,12 +59,34 @@ public class JwtService {
 
     @SuppressWarnings("unchecked")
     public List<String> extractRoles(String token) {
-        return parse(token, c -> (List<String>) c.get("roles"));
+        List<String> roles = parse(token, c -> (List<String>) c.get("roles"));
+        return roles == null ? List.of() : roles;
+    }
+
+    public boolean isAccessToken(String token) {
+        return isType(token, "access");
+    }
+
+    public boolean isRefreshToken(String token) {
+        return isType(token, "refresh");
+    }
+
+    public boolean isMfaChallenge(String token) {
+        return isType(token, "mfa");
     }
 
     public boolean isValid(String token) {
         try {
             return parse(token, Claims::getExpiration).after(new Date());
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private boolean isType(String token, String expected) {
+        try {
+            Claims claims = parse(token, c -> c);
+            return expected.equals(claims.get("type")) && claims.getExpiration().after(new Date());
         } catch (Exception e) {
             return false;
         }

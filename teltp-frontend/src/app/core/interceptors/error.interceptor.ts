@@ -13,11 +13,14 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
 
   return next(req).pipe(
     catchError((err: HttpErrorResponse) => {
+      const silent = req.url.includes('/auth/refresh')
+        || req.url.includes('/auth/forgot-password')
+        || req.url.includes('/auth/reset-password');
       const message = err.error?.message ?? err.message ?? 'Unexpected error';
-      if (err.status === 401) {
+      if (err.status === 401 && !silent) {
         tokens.clear();
         router.navigate(['/login']);
-      } else if (err.status !== 0) {
+      } else if (!silent && err.status !== 0 && err.status !== 401) {
         snack.open(message, 'Dismiss', { duration: 5000 });
       }
       return throwError(() => err);

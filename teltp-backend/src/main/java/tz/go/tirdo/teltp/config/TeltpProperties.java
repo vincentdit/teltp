@@ -18,8 +18,11 @@ public class TeltpProperties {
 
     public static class Security {
         private Jwt jwt = new Jwt();
+        private String corsOrigins = "http://localhost:9090,http://localhost:4200";
         public Jwt getJwt() { return jwt; }
         public void setJwt(Jwt jwt) { this.jwt = jwt; }
+        public String getCorsOrigins() { return corsOrigins; }
+        public void setCorsOrigins(String corsOrigins) { this.corsOrigins = corsOrigins; }
     }
 
     public static class Jwt {

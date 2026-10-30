@@ -10,5 +10,6 @@ import java.util.Optional;
 
 public interface EventRepository extends JpaRepository<ScheduledEvent, Long> {
     Optional<ScheduledEvent> findByUuid(String uuid);
+    java.util.List<ScheduledEvent> findByCourseUuid(String courseUuid);
     Page<ScheduledEvent> findByType(EventType type, Pageable pageable);
 }

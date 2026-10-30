@@ -14,10 +14,14 @@ import tz.go.tirdo.teltp.common.ReferenceNumberGenerator;
 import tz.go.tirdo.teltp.common.exception.BusinessRuleException;
 import tz.go.tirdo.teltp.common.exception.ResourceNotFoundException;
 import tz.go.tirdo.teltp.content.service.ContentStorage;
+import tz.go.tirdo.teltp.audit.service.AuditService;
 import tz.go.tirdo.teltp.progress.service.ProgressService;
+import tz.go.tirdo.teltp.security.TokenHasher;
 
 import java.time.LocalDate;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -31,6 +35,7 @@ public class CertificationService {
     private final CourseService courses;
     private final UserService users;
     private final ReferenceNumberGenerator refGen;
+    private final AuditService audit;
 
     /** When true, passing the certifying exam (which completes the course) auto-issues the certificate. */
     @Value("${teltp.certificate.auto-issue:true}")
@@ -42,7 +47,7 @@ public class CertificationService {
 
     public CertificationService(CertificateRepository certificates, CertificatePdfGenerator pdfGenerator,
                                 ContentStorage storage, ProgressService progress, CourseService courses,
-                                UserService users, ReferenceNumberGenerator refGen) {
+                                UserService users, ReferenceNumberGenerator refGen, AuditService audit) {
         this.certificates = certificates;
         this.pdfGenerator = pdfGenerator;
         this.storage = storage;
@@ -50,6 +55,7 @@ public class CertificationService {
         this.courses = courses;
         this.users = users;
         this.refGen = refGen;
+        this.audit = audit;
     }
 
     /** Issue a certificate manually; gated on verified course completion and single-issue per course. */
@@ -61,6 +67,7 @@ public class CertificationService {
                 .ifPresent(c -> { throw new BusinessRuleException("Certificate already issued"); });
         Certificate saved = buildAndStore(req.studentUuid(), req.courseUuid(),
                 req.accreditingBody(), req.accreditationLevel(), req.expiresOn());
+        audit.record("CERTIFICATE_ISSUED", "Certificate", saved.getUuid(), req.studentUuid());
         return toResponse(saved);
     }
 
@@ -78,6 +85,7 @@ public class CertificationService {
         String body = (defaultAccreditingBody == null || defaultAccreditingBody.isBlank())
                 ? null : defaultAccreditingBody;
         Certificate saved = buildAndStore(studentUuid, courseUuid, body, null, null);
+        audit.record("CERTIFICATE_AUTO_ISSUED", "Certificate", saved.getUuid(), studentUuid);
         return Optional.of(toResponse(saved));
     }
 
@@ -97,6 +105,7 @@ public class CertificationService {
         Certificate cert = require(uuid);
         cert.setRevoked(true);
         certificates.save(cert);
+        audit.record("CERTIFICATE_REVOKED", "Certificate", cert.getUuid(), cert.getStudentUuid());
     }
 
     @Transactional(readOnly = true)
@@ -150,6 +159,47 @@ public class CertificationService {
         String key = storage.store(saved.getReferenceNumber() + ".pdf", pdf, "application/pdf");
         saved.setPdfStorageKey(key);
         return certificates.save(saved);
+    }
+
+    public String ownerUuid(String uuid) {
+        return require(uuid).getStudentUuid();
+    }
+
+    /**
+     * Open Badges 2.0 hosted assertion. The recipient identity is a salted hash, so the public
+     * document does not publish an email address.
+     */
+    @Transactional(readOnly = true)
+    public Map<String, Object> openBadge(String code) {
+        Certificate c = certificates.findByVerificationCode(code)
+                .orElseThrow(() -> new ResourceNotFoundException("Certificate", code));
+        String identity = "sha256$" + TokenHasher.sha256(c.getStudentUuid() + c.getVerificationCode());
+        Map<String, Object> issuer = new LinkedHashMap<>();
+        issuer.put("type", "Issuer");
+        issuer.put("name", c.getAccreditingBody() == null || c.getAccreditingBody().isBlank()
+                ? "Tanzania Industrial Research and Development Organization" : c.getAccreditingBody());
+        issuer.put("url", "https://www.tirdo.or.tz");
+        Map<String, Object> badge = new LinkedHashMap<>();
+        badge.put("type", "BadgeClass");
+        badge.put("name", c.getCourseTitle());
+        badge.put("description", "Completion of " + c.getCourseTitle());
+        badge.put("issuer", issuer);
+        Map<String, Object> recipient = new LinkedHashMap<>();
+        recipient.put("type", "id");
+        recipient.put("hashed", true);
+        recipient.put("salt", c.getVerificationCode());
+        recipient.put("identity", identity);
+        Map<String, Object> assertion = new LinkedHashMap<>();
+        assertion.put("@context", "https://w3id.org/openbadges/v2");
+        assertion.put("type", "Assertion");
+        assertion.put("id", code);
+        assertion.put("recipient", recipient);
+        assertion.put("badge", badge);
+        assertion.put("issuedOn", c.getIssuedOn().toString());
+        assertion.put("verification", Map.of("type", "hosted"));
+        if (c.isRevoked()) assertion.put("revoked", true);
+        if (c.getExpiresOn() != null) assertion.put("expires", c.getExpiresOn().toString());
+        return assertion;
     }
 
     private Certificate require(String uuid) {
