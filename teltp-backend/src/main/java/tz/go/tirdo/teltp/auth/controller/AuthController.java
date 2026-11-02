@@ -6,6 +6,7 @@ import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 import tz.go.tirdo.teltp.auth.dto.AuthDtos.*;
 import tz.go.tirdo.teltp.auth.service.AuthService;
+import tz.go.tirdo.teltp.auth.service.EmailVerificationService;
 import tz.go.tirdo.teltp.auth.service.PasswordResetService;
 import tz.go.tirdo.teltp.common.ApiResponse;
 import tz.go.tirdo.teltp.security.CurrentUser;
@@ -18,17 +19,24 @@ public class AuthController {
 
     private final AuthService auth;
     private final PasswordResetService resets;
+    private final EmailVerificationService verification;
     private final JwtService jwt;
 
-    public AuthController(AuthService auth, PasswordResetService resets, JwtService jwt) {
+    public AuthController(AuthService auth, PasswordResetService resets, EmailVerificationService verification,
+                          JwtService jwt) {
         this.auth = auth;
         this.resets = resets;
+        this.verification = verification;
         this.jwt = jwt;
     }
 
     @PostMapping("/register")
     public ApiResponse<UserResponse> register(@Valid @RequestBody RegisterRequest req) {
-        return ApiResponse.ok("Registration successful", auth.register(req));
+        UserResponse user = auth.register(req);
+        String message = user.emailVerified()
+                ? "Account created. You can sign in."
+                : "Account created. Check your email and confirm it before signing in.";
+        return ApiResponse.ok(message, user);
     }
 
     @PostMapping("/login")
@@ -69,6 +77,18 @@ public class AuthController {
         return ApiResponse.ok(present(auth.refresh(raw), request, response));
     }
 
+    @PostMapping("/verify-email")
+    public ApiResponse<Void> verifyEmail(@Valid @RequestBody VerifyEmailRequest req) {
+        verification.confirm(req.token());
+        return ApiResponse.ok("Email confirmed. You can sign in.", null);
+    }
+
+    @PostMapping("/verify-email/resend")
+    public ApiResponse<Void> resendVerification(@Valid @RequestBody ResendVerificationRequest req) {
+        verification.resend(req.email());
+        return ApiResponse.ok("If that email needs confirmation, a new link has been sent.", null);
+    }
+
     @PostMapping("/logout")
     public ApiResponse<Void> logout(@RequestBody(required = false) RefreshRequest body,
                                     HttpServletRequest request, HttpServletResponse response) {
@@ -91,9 +111,11 @@ public class AuthController {
     }
 
     /** Puts the refresh token in an HttpOnly cookie and strips it from the JSON body. */
-    private TokenResponse present(TokenResponse tokens, HttpServletRequest request, HttpServletResponse response) {
+    private TokenResponse present(AuthSession session, HttpServletRequest request, HttpServletResponse response) {
+        TokenResponse tokens = session.tokens();
         if (tokens.mfaRequired() || tokens.refreshToken() == null) return tokens;
-        RefreshCookie.write(response, tokens.refreshToken(), jwt.refreshTtlSeconds(), request.isSecure());
+        long maxAge = session.persistent() ? jwt.refreshTtlSeconds() : -1;
+        RefreshCookie.write(response, tokens.refreshToken(), maxAge, request.isSecure());
         return new TokenResponse(tokens.accessToken(), null, tokens.tokenType(), tokens.expiresIn(), false, null);
     }
 }

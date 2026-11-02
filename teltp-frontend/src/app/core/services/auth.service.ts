@@ -19,8 +19,8 @@ export class AuthService {
     return this.api.post<TokenResponse>('/auth/login', req).pipe(tap((t) => this.keep(t)));
   }
 
-  verifyMfa(challenge: string, code: string): Observable<TokenResponse> {
-    return this.api.post<TokenResponse>('/auth/mfa/verify', { challenge, code }).pipe(tap((t) => this.keep(t)));
+  verifyMfa(challenge: string, code: string, rememberMe = false): Observable<TokenResponse> {
+    return this.api.post<TokenResponse>('/auth/mfa/verify', { challenge, code, rememberMe }).pipe(tap((t) => this.keep(t)));
   }
 
   /** Re-issues an access token from the HttpOnly refresh cookie. Fails quietly when signed out. */
@@ -41,6 +41,14 @@ export class AuthService {
 
   resetPassword(token: string, newPassword: string): Observable<void> {
     return this.api.post<void>('/auth/reset-password', { token, newPassword });
+  }
+
+  verifyEmail(token: string): Observable<void> {
+    return this.api.post<void>('/auth/verify-email', { token });
+  }
+
+  resendVerification(email: string): Observable<void> {
+    return this.api.post<void>('/auth/verify-email/resend', { email });
   }
 
   logout(): void {

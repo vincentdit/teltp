@@ -16,10 +16,19 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
       const silent = req.url.includes('/auth/refresh')
         || req.url.includes('/auth/forgot-password')
         || req.url.includes('/auth/reset-password');
+      const credentialAttempt = req.url.includes('/auth/login')
+        || req.url.includes('/auth/register')
+        || req.url.includes('/auth/mfa/verify')
+        || req.url.includes('/auth/verify-email');
       const message = err.error?.message ?? err.message ?? 'Unexpected error';
+      if (credentialAttempt) {
+        return throwError(() => err);
+      }
       if (err.status === 401 && !silent) {
         tokens.clear();
-        router.navigate(['/login']);
+        const path = router.url;
+        if (path.startsWith('/login')) router.navigate(['/login']);
+        else router.navigate(['/login'], { queryParams: { redirect: path } });
       } else if (!silent && err.status !== 0 && err.status !== 401) {
         snack.open(message, 'Dismiss', { duration: 5000 });
       }

@@ -11,6 +11,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.function.Function;
 
 @Service
@@ -31,7 +32,7 @@ public class JwtService {
     }
 
     public String generateRefreshToken(String username) {
-        return build(username, Map.of("type", "refresh"), refreshValidity);
+        return build(username, Map.of("type", "refresh", "jti", UUID.randomUUID().toString()), refreshValidity);
     }
 
     public String generateMfaChallenge(String username) {

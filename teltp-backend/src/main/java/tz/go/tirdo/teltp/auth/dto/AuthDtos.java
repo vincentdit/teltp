@@ -11,15 +11,16 @@ public final class AuthDtos {
     private AuthDtos() {}
 
     public record LoginRequest(
-            @NotBlank String username,
-            @NotBlank String password) {}
+            @NotBlank @Size(max = 150) String username,
+            @NotBlank @Size(max = 200) String password,
+            boolean rememberMe) {}
 
     public record RegisterRequest(
             @NotBlank @Size(max = 100) String username,
             @NotBlank @Email String email,
-            @NotBlank @Size(min = 10, max = 200) String password,
-            String firstName,
-            String lastName,
+            @NotBlank @Size(max = 200) String password,
+            @NotBlank @Size(max = 100) String firstName,
+            @NotBlank @Size(max = 100) String lastName,
             String phoneNumber,
             String profession,
             boolean dataProcessingConsent) {}
@@ -30,9 +31,13 @@ public final class AuthDtos {
 
     public record CompleteResetRequest(
             @NotBlank String token,
-            @NotBlank @Size(min = 10, max = 200) String newPassword) {}
+            @NotBlank @Size(max = 200) String newPassword) {}
 
-    public record MfaVerifyRequest(@NotBlank String challenge, @NotBlank String code) {}
+    public record VerifyEmailRequest(@NotBlank String token) {}
+
+    public record ResendVerificationRequest(@NotBlank @Email String email) {}
+
+    public record MfaVerifyRequest(@NotBlank String challenge, @NotBlank String code, boolean rememberMe) {}
 
     public record MfaCodeRequest(@NotBlank String code) {}
 
@@ -62,9 +67,13 @@ public final class AuthDtos {
             String profession,
             String organizationUuid,
             boolean active,
-            Set<String> roles) {}
+            Set<String> roles,
+            boolean emailVerified) {}
 
     public record AssignRolesRequest(@NotBlank String userUuid, Set<String> roles) {}
 
-    public record ResetPasswordRequest(@NotBlank @Size(min = 10, max = 200) String newPassword) {}
+    public record ResetPasswordRequest(@NotBlank @Size(max = 200) String newPassword) {}
+
+    /** Tokens plus whether the refresh cookie should survive the browser being closed. */
+    public record AuthSession(TokenResponse tokens, boolean persistent) {}
 }

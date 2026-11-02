@@ -2,6 +2,7 @@ package tz.go.tirdo.teltp.auth.service;
 
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.DisabledException;
+import org.springframework.security.authentication.LockedException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,13 +21,21 @@ import tz.go.tirdo.teltp.security.MfaService;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
 public class AuthService {
+
+    private static final int MAX_FAILURES = 5;
+    private static final Duration LOCK_FOR = Duration.ofMinutes(15);
+    /** Equalises response time when the account does not exist. Not a real user password. */
+    private static final String DUMMY_HASH =
+            "$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy";
 
     private final UserRepository users;
     private final RoleRepository roles;
@@ -36,10 +45,12 @@ public class AuthService {
     private final UserMapper mapper;
     private final RefreshTokenService refreshTokens;
     private final AuditService audit;
+    private final EmailVerificationService verification;
 
     public AuthService(UserRepository users, RoleRepository roles, PasswordEncoder encoder,
                        JwtService jwt, MfaService mfa, UserMapper mapper,
-                       RefreshTokenService refreshTokens, AuditService audit) {
+                       RefreshTokenService refreshTokens, AuditService audit,
+                       EmailVerificationService verification) {
         this.users = users;
         this.roles = roles;
         this.encoder = encoder;
@@ -48,74 +59,91 @@ public class AuthService {
         this.mapper = mapper;
         this.refreshTokens = refreshTokens;
         this.audit = audit;
+        this.verification = verification;
     }
 
     @Transactional
     public UserResponse register(RegisterRequest req) {
         if (!req.dataProcessingConsent())
-            throw new BusinessRuleException("Data processing consent is required");
+            throw new BusinessRuleException("Accept the terms and data-processing consent to create an account");
         PasswordPolicy.require(req.password());
-        if (users.existsByUsername(req.username())) throw new DuplicateResourceException("Username already taken");
-        if (users.existsByEmail(req.email())) throw new DuplicateResourceException("Email already registered");
+        if (users.existsByUsernameIgnoreCase(req.username().trim()))
+            throw new DuplicateResourceException("That username is already taken. Choose another.");
+        if (users.existsByEmailIgnoreCase(req.email().trim()))
+            throw new DuplicateResourceException("That email is already registered. Sign in or reset your password.");
 
+        boolean verifyByEmail = verification.mailEnabled();
         User user = new User();
-        user.setUsername(req.username());
-        user.setEmail(req.email());
+        user.setUsername(req.username().trim());
+        user.setEmail(req.email().trim());
         user.setPasswordHash(encoder.encode(req.password()));
-        user.setFirstName(req.firstName());
-        user.setLastName(req.lastName());
+        user.setFirstName(req.firstName().trim());
+        user.setLastName(req.lastName().trim());
         user.setPhoneNumber(req.phoneNumber());
         user.setProfession(req.profession());
         user.setDataProcessingConsent(true);
+        user.setEmailVerified(!verifyByEmail);
 
         Role studentRole = roles.findByName(RoleName.STUDENT)
                 .orElseThrow(() -> new ResourceNotFoundException("Default STUDENT role missing"));
         user.getRoles().add(studentRole);
 
         User saved = users.save(user);
+        if (verifyByEmail) verification.send(saved);
         audit.record("USER_REGISTERED", "User", saved.getUuid(), saved.getUsername());
         return mapper.toResponse(saved);
     }
 
     @Transactional
-    public TokenResponse login(LoginRequest req) {
-        User user = users.findByUsername(req.username())
-                .orElseThrow(() -> new BadCredentialsException("Invalid credentials"));
-        if (!user.isActive()) throw new DisabledException("Account is disabled");
-        if (!encoder.matches(req.password(), user.getPasswordHash()))
+    public AuthSession login(LoginRequest req) {
+        User user = findForLogin(req.username().trim());
+        if (user == null) {
+            encoder.matches(req.password(), DUMMY_HASH);
             throw new BadCredentialsException("Invalid credentials");
+        }
+        ensureNotLocked(user);
+        if (!encoder.matches(req.password(), user.getPasswordHash())) failLogin(user);
+        if (!user.isActive()) throw new DisabledException("This account is disabled. Contact TIRDO if you need access.");
+        if (!user.isEmailVerified())
+            throw new DisabledException("Confirm your email before signing in.");
+        clearFailures(user);
         if (mfa.isRequired(user)) {
-            return new TokenResponse(null, null, "Bearer", 0, true, jwt.generateMfaChallenge(user.getUsername()));
+            TokenResponse challenge = new TokenResponse(
+                    null, null, "Bearer", 0, true, jwt.generateMfaChallenge(user.getUsername()));
+            return new AuthSession(challenge, req.rememberMe());
         }
         audit.record("LOGIN", "User", user.getUuid(), user.getUsername());
-        return issueTokens(user);
+        return new AuthSession(issueTokens(user, req.rememberMe()), req.rememberMe());
     }
 
     @Transactional
-    public TokenResponse verifyMfa(MfaVerifyRequest req) {
+    public AuthSession verifyMfa(MfaVerifyRequest req) {
         if (!jwt.isMfaChallenge(req.challenge()))
             throw new BadCredentialsException("MFA challenge is invalid or expired");
         String username = jwt.extractUsername(req.challenge());
         User user = users.findByUsername(username)
                 .orElseThrow(() -> new BadCredentialsException("Invalid credentials"));
         if (!user.isActive()) throw new DisabledException("Account is disabled");
+        if (!user.isEmailVerified())
+            throw new DisabledException("Confirm your email before signing in.");
         if (!mfa.verify(user, req.code()))
             throw new BadCredentialsException("Invalid authentication code");
         audit.record("LOGIN_MFA", "User", user.getUuid(), user.getUsername());
-        return issueTokens(user);
+        return new AuthSession(issueTokens(user, req.rememberMe()), req.rememberMe());
     }
 
     @Transactional
-    public TokenResponse refresh(String rawRefreshToken) {
+    public AuthSession refresh(String rawRefreshToken) {
         if (rawRefreshToken == null || !jwt.isRefreshToken(rawRefreshToken))
             throw new BusinessRuleException("Invalid refresh token");
         String username = jwt.extractUsername(rawRefreshToken);
-        refreshTokens.requireActive(username, rawRefreshToken);
+        var current = refreshTokens.requireActive(username, rawRefreshToken);
+        boolean persistent = current.isPersistent();
         refreshTokens.revoke(rawRefreshToken);
         User user = users.findByUsername(username)
                 .orElseThrow(() -> new ResourceNotFoundException("User", username));
-        if (!user.isActive()) throw new DisabledException("Account is disabled");
-        return issueTokens(user);
+        if (!user.isActive()) throw new DisabledException("This account is disabled. Contact TIRDO if you need access.");
+        return new AuthSession(issueTokens(user, persistent), persistent);
     }
 
     @Transactional
@@ -187,11 +215,44 @@ public class AuthService {
                 .orElseThrow(() -> new ResourceNotFoundException("User", username));
     }
 
-    private TokenResponse issueTokens(User user) {
+    private User findForLogin(String identifier) {
+        Optional<User> byName = users.findByUsernameIgnoreCase(identifier);
+        if (byName.isPresent()) return byName.get();
+        return users.findByEmailIgnoreCase(identifier).orElse(null);
+    }
+
+    private void ensureNotLocked(User user) {
+        if (user.getLockedUntil() != null && user.getLockedUntil().isAfter(Instant.now())) {
+            throw new LockedException("This account is temporarily locked. Try again in 15 minutes.");
+        }
+    }
+
+    private void failLogin(User user) {
+        int next = user.getFailedLoginCount() + 1;
+        if (next >= MAX_FAILURES) {
+            user.setFailedLoginCount(0);
+            user.setLockedUntil(Instant.now().plus(LOCK_FOR));
+            users.save(user);
+            audit.record("LOGIN_LOCKED", "User", user.getUuid(), user.getUsername());
+            throw new LockedException("This account is temporarily locked. Try again in 15 minutes.");
+        }
+        user.setFailedLoginCount(next);
+        users.save(user);
+        throw new BadCredentialsException("Invalid credentials");
+    }
+
+    private void clearFailures(User user) {
+        if (user.getFailedLoginCount() == 0 && user.getLockedUntil() == null) return;
+        user.setFailedLoginCount(0);
+        user.setLockedUntil(null);
+        users.save(user);
+    }
+
+    private TokenResponse issueTokens(User user, boolean persistent) {
         List<String> roleNames = user.getRoles().stream().map(r -> r.getName().name()).toList();
         String access = jwt.generateAccessToken(user.getUsername(), roleNames);
         String refresh = jwt.generateRefreshToken(user.getUsername());
-        refreshTokens.store(user.getUsername(), refresh, Instant.now().plusSeconds(jwt.refreshTtlSeconds()));
+        refreshTokens.store(user.getUsername(), refresh, Instant.now().plusSeconds(jwt.refreshTtlSeconds()), persistent);
         return new TokenResponse(access, refresh, "Bearer", jwt.accessTtlSeconds(), false, null);
     }
 }

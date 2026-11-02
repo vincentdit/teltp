@@ -21,6 +21,11 @@ export const routes: Routes = [
       import('./features/auth/reset-password/reset-password.component').then((m) => m.ResetPasswordComponent),
   },
   {
+    path: 'verify-email',
+    loadComponent: () =>
+      import('./features/auth/verify-email/verify-email.component').then((m) => m.VerifyEmailComponent),
+  },
+  {
     path: 'register',
     loadComponent: () =>
       import('./features/auth/register/register.component').then((m) => m.RegisterComponent),
@@ -109,6 +114,13 @@ export const routes: Routes = [
     data: { roles: ['ADMIN', 'INSTRUCTOR'] },
     loadComponent: () =>
       import('./features/admin/admin-home/admin-home.component').then((m) => m.AdminHomeComponent),
+  },
+  {
+    path: 'admin/portal-slides',
+    canActivate: [roleGuard],
+    data: { roles: ['ADMIN'] },
+    loadComponent: () =>
+      import('./features/admin/portal-slides/portal-slides.component').then((m) => m.PortalSlidesComponent),
   },
   {
     path: 'admin/courses',

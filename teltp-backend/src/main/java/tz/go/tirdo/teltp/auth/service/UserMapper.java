@@ -18,6 +18,7 @@ public class UserMapper {
                 u.getProfession(),
                 u.getOrganization() == null ? null : u.getOrganization().getUuid(),
                 u.isActive(),
-                u.getRoles().stream().map(Role::getName).map(Enum::name).collect(Collectors.toSet()));
+                u.getRoles().stream().map(Role::getName).map(Enum::name).collect(Collectors.toSet()),
+                u.isEmailVerified());
     }
 }

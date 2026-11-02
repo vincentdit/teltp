@@ -29,6 +29,10 @@ public class RefreshToken {
     @Column(nullable = false)
     private boolean revoked = false;
 
+    /** False when the user did not choose Remember me: the cookie is a browser session cookie. */
+    @Column(nullable = false)
+    private boolean persistent = true;
+
     @Column(nullable = false)
     private Instant createdAt = Instant.now();
 }

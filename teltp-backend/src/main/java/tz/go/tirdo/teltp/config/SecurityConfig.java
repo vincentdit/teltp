@@ -8,7 +8,9 @@ import org.springframework.security.config.annotation.authentication.configurati
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.crypto.argon2.Argon2PasswordEncoder;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.DelegatingPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
@@ -17,7 +19,9 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import tz.go.tirdo.teltp.security.JwtAuthenticationFilter;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Configuration
 @EnableMethodSecurity
@@ -35,6 +39,7 @@ public class SecurityConfig {
     private static final String[] PUBLIC = {
             "/auth/login", "/auth/register", "/auth/refresh", "/auth/logout",
             "/auth/forgot-password", "/auth/reset-password", "/auth/mfa/verify",
+            "/auth/verify-email", "/auth/verify-email/resend",
             "/billing/gepg/callback",
             "/certification/verify/**",
             "/certification/badges/**",
@@ -51,14 +56,24 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(PUBLIC).permitAll()
                 .requestMatchers(HttpMethod.GET, "/catalog/courses/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/portal/slides", "/portal/slides/*/image").permitAll()
                 .anyRequest().authenticated())
             .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
 
+    /**
+     * New passwords are Argon2id. Existing BCrypt hashes have no {@code {id}} prefix and
+     * still match through the default encoder, so current accounts keep working.
+     */
     @Bean
     public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
+        Map<String, PasswordEncoder> encoders = new HashMap<>();
+        encoders.put("argon2", Argon2PasswordEncoder.defaultsForSpringSecurity_v5_8());
+        encoders.put("bcrypt", new BCryptPasswordEncoder());
+        DelegatingPasswordEncoder delegating = new DelegatingPasswordEncoder("argon2", encoders);
+        delegating.setDefaultPasswordEncoderForMatches(new BCryptPasswordEncoder());
+        return delegating;
     }
 
     /**

@@ -32,6 +32,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
                 || path.contains("/auth/forgot-password")
                 || path.contains("/auth/reset-password")
                 || path.contains("/auth/mfa/verify")
+                || path.contains("/auth/verify-email")
                 || path.contains("/certification/verify")
                 || path.contains("/billing/gepg/callback"));
     }
@@ -46,7 +47,9 @@ public class RateLimitFilter extends OncePerRequestFilter {
             existing.count++;
             return existing;
         });
-        if (window.count > LIMIT) {
+        int limit = request.getRequestURI().contains("/auth/login")
+                || request.getRequestURI().contains("/auth/mfa/verify") ? 10 : LIMIT;
+        if (window.count > limit) {
             response.setStatus(429);
             response.setContentType(MediaType.APPLICATION_JSON_VALUE);
             response.getWriter().write(

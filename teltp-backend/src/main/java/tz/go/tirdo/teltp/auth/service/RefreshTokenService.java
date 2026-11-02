@@ -19,22 +19,24 @@ public class RefreshTokenService {
     }
 
     @Transactional
-    public void store(String username, String rawToken, Instant expiresAt) {
+    public void store(String username, String rawToken, Instant expiresAt, boolean persistent) {
         RefreshToken row = new RefreshToken();
         row.setUsername(username);
         row.setTokenHash(TokenHasher.sha256(rawToken));
         row.setExpiresAt(expiresAt);
+        row.setPersistent(persistent);
         tokens.save(row);
     }
 
     /** Accepts a live, unrevoked refresh token for this user. */
     @Transactional(readOnly = true)
-    public void requireActive(String username, String rawToken) {
+    public RefreshToken requireActive(String username, String rawToken) {
         RefreshToken row = tokens.findByTokenHash(TokenHasher.sha256(rawToken))
                 .orElseThrow(() -> new BusinessRuleException("Refresh token is not recognized"));
         if (!username.equals(row.getUsername()) || row.isRevoked() || row.getExpiresAt().isBefore(Instant.now())) {
             throw new BusinessRuleException("Refresh token is no longer valid");
         }
+        return row;
     }
 
     @Transactional

@@ -26,6 +26,18 @@ export class ApiService {
   patch<T>(path: string, body: unknown): Observable<T> {
     return this.http.patch<ApiResponse<T>>(this.base + path, body).pipe(map((r) => r.data));
   }
+
+  putForm<T>(path: string, body: FormData): Observable<T> {
+    return this.http.put<ApiResponse<T>>(this.base + path, body).pipe(map((r) => r.data));
+  }
+
+  postForm<T>(path: string, body: FormData): Observable<T> {
+    return this.http.post<ApiResponse<T>>(this.base + path, body).pipe(map((r) => r.data));
+  }
+
+  delete<T>(path: string): Observable<T> {
+    return this.http.delete<ApiResponse<T>>(this.base + path).pipe(map((r) => r.data));
+  }
 }
 
 function toParams(params?: Record<string, string | number | boolean>): HttpParams {

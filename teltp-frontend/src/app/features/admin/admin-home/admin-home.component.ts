@@ -52,6 +52,7 @@ export class AdminHomeComponent {
     { label: 'Billing & Payments', icon: 'receipt_long', link: '/admin/billing', ready: true },
     { label: 'Certificates', icon: 'workspace_premium', link: '/admin/certificates', ready: true },
     { label: 'Schedule & Webinars', icon: 'event', link: '/schedule', ready: true },
+    { label: 'Sign-in notices', icon: 'view_carousel', link: '/admin/portal-slides', ready: true },
     { label: 'Billing & Invoices', icon: 'receipt_long', ready: false },
     { label: 'Organizations', icon: 'apartment', ready: false },
     { label: 'Reporting', icon: 'insights', ready: false },

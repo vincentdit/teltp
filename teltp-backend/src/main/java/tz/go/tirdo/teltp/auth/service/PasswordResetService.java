@@ -51,7 +51,7 @@ public class PasswordResetService {
 
     @Transactional
     public void request(String emailAddress) {
-        users.findByEmail(emailAddress).ifPresent(user -> {
+        users.findByEmailIgnoreCase(emailAddress.trim()).ifPresent(user -> {
             byte[] buf = new byte[32];
             RANDOM.nextBytes(buf);
             String raw = HexFormat.of().formatHex(buf);

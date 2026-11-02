@@ -6,6 +6,7 @@ import lombok.Setter;
 import tz.go.tirdo.teltp.common.BaseEntity;
 import tz.go.tirdo.teltp.organization.entity.Organization;
 
+import java.time.Instant;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -51,6 +52,13 @@ public class User extends BaseEntity {
 
     /** PDPA consent affordance captured at registration. */
     private boolean dataProcessingConsent = false;
+
+    /** Existing accounts are verified. New accounts stay false until the email link is used. */
+    private boolean emailVerified = true;
+
+    private int failedLoginCount = 0;
+
+    private Instant lockedUntil;
 
     /** Base32 TOTP secret. Present once the user has started MFA setup. */
     @Column(length = 64)

@@ -1,7 +1,7 @@
 export type RoleName =
   | 'ADMIN' | 'INSTRUCTOR' | 'STUDENT' | 'CORPORATE_CLIENT' | 'FINANCE_OFFICER';
 
-export interface LoginRequest { username: string; password: string; }
+export interface LoginRequest { username: string; password: string; rememberMe?: boolean; }
 
 export interface RegisterRequest {
   username: string;
@@ -32,4 +32,5 @@ export interface UserResponse {
   organizationUuid?: string;
   active: boolean;
   roles: RoleName[];
+  emailVerified?: boolean;
 }
