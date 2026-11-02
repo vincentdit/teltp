@@ -20,6 +20,7 @@ import { PortalSlide } from '../../../core/models/portal-slide.model';
         } @else {
           <div class="carousel" (mouseenter)="pause()" (mouseleave)="resume()" aria-roledescription="carousel"
                aria-label="TIRDO notices">
+            <img class="mark" src="/tirdo-logo.png" alt="TIRDO" />
             @for (slide of slides(); track slide.uuid; let i = $index) {
               <article class="slide" [class.on]="i === index()" [attr.aria-hidden]="i !== index()">
                 @if (slide.hasImage) {
@@ -93,6 +94,11 @@ import { PortalSlide } from '../../../core/models/portal-slide.model';
       position: absolute; left: 0; top: 0.45em;
     }
     .carousel { position: relative; min-height: 420px; margin: -36px -32px; border-radius: 20px; overflow: hidden; }
+    .carousel .mark {
+      position: absolute; z-index: 3; top: 20px; left: 20px;
+      width: 72px; height: 72px; object-fit: contain; background: #fff;
+      border-radius: 16px; padding: 8px; box-shadow: 0 8px 22px rgba(0, 0, 0, 0.22);
+    }
     .slide {
       position: absolute; inset: 0; opacity: 0; display: flex; align-items: flex-end;
       transition: opacity 0.6s ease; pointer-events: none;
@@ -129,6 +135,7 @@ import { PortalSlide } from '../../../core/models/portal-slide.model';
       .auth-brand h2 { font-size: 1.45rem; }
       .auth-brand ul { display: none; }
       .carousel { min-height: 280px; margin: -22px -20px; }
+      .carousel .mark { width: 48px; height: 48px; top: 14px; left: 14px; border-radius: 12px; padding: 6px; }
     }
     @media (prefers-reduced-motion: reduce) {
       .auth-panel, .slide { animation: none; transition: none; }
